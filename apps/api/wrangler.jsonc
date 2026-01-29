@@ -3,42 +3,11 @@
 	"name": "api",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-01-29",
-	// "compatibility_flags": [
-	//   "nodejs_compat"
-	// ],
-	// "vars": {
-	//   "MY_VAR": "my-variable"
-	// },
-	// "kv_namespaces": [
-	//   {
-	//     "binding": "MY_KV_NAMESPACE",
-	//     "id": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-	//   }
-	// ],
-	// "r2_buckets": [
-	//   {
-	//     "binding": "MY_BUCKET",
-	//     "bucket_name": "my-bucket"
-	//   }
-	// ],
 	"d1_databases": [
 		{
 			"binding": "DB",
 			"database_name": "nicenote-db",
 			"database_id": "49c6fb86-1c84-486b-bbcf-f4a612de6642"
-		},
-		{
-			"binding": "nicenote_db",
-			"database_name": "nicenote-db",
-			"database_id": "49c6fb86-1c84-486b-bbcf-f4a612de6642",
-			"remote": true
 		}
-	],
-	// "ai": {
-	//   "binding": "AI"
-	// },
-	// "observability": {
-	//   "enabled": true,
-	//   "head_sampling_rate": 1
-	// }
+	]
 }
