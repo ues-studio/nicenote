@@ -48,13 +48,13 @@ export default function Editor({ initialContent, onChange }: EditorProps) {
   })
 
   useEffect(() => {
-    if (editor) {
-      const storage = editor.storage as any
-      if (storage.markdown) {
-        const currentMarkdown = storage.markdown.getMarkdown()
-        if (initialContent !== currentMarkdown) {
-          editor.commands.setContent(initialContent)
-        }
+    if (!editor) return
+
+    const storage = editor.storage as any
+    if (storage.markdown) {
+      const currentMarkdown = storage.markdown.getMarkdown()
+      if (initialContent !== currentMarkdown) {
+        editor.commands.setContent(initialContent, false)
       }
     }
   }, [initialContent, editor])
