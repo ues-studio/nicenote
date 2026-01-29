@@ -76,9 +76,11 @@ export const useNoteStore = create<NoteStore>((set) => ({
 
   saveNote: async (id, updates) => {
     try {
-      // Ensure content is not null when sending to API
+      // Ensure content is a string
       const jsonUpdates: any = { ...updates }
-      if (jsonUpdates.content === null) jsonUpdates.content = ''
+      if (jsonUpdates.content === null || jsonUpdates.content === undefined) {
+        delete jsonUpdates.content
+      }
       
       await api.notes[':id'].$patch({
         param: { id },

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 @theme {
   --color-background: hsl(0 0% 100%);
@@ -28,4 +29,88 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Tiptap Code Highlighting */
+.prose pre {
+  @apply bg-muted text-muted-foreground p-4 rounded-lg overflow-x-auto;
+}
+
+.prose code {
+  @apply bg-muted px-1 py-0.5 rounded text-sm font-mono;
+}
+
+.prose pre code {
+  @apply bg-transparent p-0 text-sm;
+}
+
+.hljs-comment,
+.hljs-quote {
+  @apply text-muted-foreground/60 italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-subst {
+  @apply text-blue-600 font-semibold;
+}
+
+.hljs-number,
+.hljs-literal,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag .hljs-attr {
+  @apply text-orange-600;
+}
+
+.hljs-string,
+.hljs-doctag {
+  @apply text-green-600;
+}
+
+.hljs-title,
+.hljs-section,
+.hljs-selector-id {
+  @apply text-purple-600 font-bold;
+}
+
+.hljs-subst {
+  @apply text-foreground;
+}
+
+.hljs-type,
+.hljs-class .hljs-title {
+  @apply text-yellow-600;
+}
+
+.hljs-attribute,
+.hljs-name,
+.hljs-tag {
+  @apply text-red-600;
+}
+
+/* Task List Styles */
+ul[data-type="taskList"] {
+  list-style: none;
+  padding: 0;
+}
+
+ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+ul[data-type="taskList"] label {
+  user-select: none;
+  margin-top: 0.2rem;
+}
+
+ul[data-type="taskList"] input[type="checkbox"] {
+  cursor: pointer;
+}
+
+ul[data-type="taskList"] div {
+  flex: 1;
 }

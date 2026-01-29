@@ -49,28 +49,49 @@
    - 将 RPC 客户端集成到 Zustand 的动作中。
 
 ## 阶段 4: 集成 Tiptap 编辑器
-现在在 `apps/web` 中集成 Tiptap 编辑器。
+现在在 `apps/web` 中集成 Tiptap 编辑器，但我希望这是一个 **Markdown 优先** 的编辑器。
 
-1. 安装 `@tiptap/react`, `@tiptap/starter-kit` 以及必要的扩展（如 Placeholder, Typography）。
-2. 创建一个 `Editor` 组件：
-   - 接收 `content` (JSON) 和 `onChange` 回调。
-   - 如果内容为空，显示 Placeholder "Start writing..."。
-   - 使用 Tailwind class (`prose prose-slate`) 美化编辑器样式，使其看起来像 Notion，去除默认的 outline。
-3. 实现防抖保存 (Debounce Save)：
-   - 当用户打字时，只更新 Zustand 的本地状态。
-   - 使用 `useDebounce` 或在 Zustand 中实现逻辑，在停止打字 1 秒后调用 API 保存到后端。
+1. 安装依赖：
+   - 安装 `@tiptap/react`, `@tiptap/starter-kit`。
+   - 重点：安装 `tiptap-markdown` 库，我们需要用它来将编辑器内容转换为 Markdown 字符串。
+
+2. 创建 `Editor` 组件：
+   - 接收 props: `initialContent` (string 类型，Markdown 格式) 和 `onChange` (function)。
+   - 配置 Tiptap：
+     - 使用 `StarterKit`。
+     - 注册 `Markdown` 扩展 (来自 tiptap-markdown)。
+   - **关键逻辑**：
+     - 初始化时：将传入的 Markdown 字符串渲染为富文本。
+     - `onUpdate` 时：使用 `editor.storage.markdown.getMarkdown()` 获取当前的 Markdown 字符串，而不是 JSON。
+
+3. 样式与体验：
+   - 使用 Tailwind 的 `@tailwindcss/typography` 插件。
+   - 给编辑器容器添加 `prose prose-slate max-w-none` 类名，让 Markdown 渲染出的样式更美观（类似 Notion）。
+   - 去除默认的聚焦边框 (`outline-none`)。
+   - 确保 Markdown 快捷键可用（例如输入 `# ` 变标题，`> ` 变引用，`- ` 变列表）。
+
+4. 集成到状态管理：
+   - 修改 Zustand 的 `updateNote` 逻辑，确保传递给后端的是 Markdown 字符串。
+   - 包含防抖 (Debounce) 逻辑：用户打字时不立即请求 API，停止输入 500ms-1s 后再触发保存。
 
 ## 阶段 5: 交互优化 (Vibe Polish)
-让我们给 NiceNote 增加一些 Vibe。
+让我们给 NiceNote 增加一些针对 Markdown 优化的 Vibe。
 
-1. Tiptap 增强：
-   - 添加 `@tiptap/extension-floating-menu` 和 `@tiptap/extension-bubble-menu`。
-   - 当选中文字时，显示 Bubble Menu（加粗、斜体、删除线）。
-   - 在新行开始时，显示 Floating Menu（快速插入标题、列表）。
-2. UI 细节：
-   - 在 Sidebar 中，当前选中的笔记要有明显的背景高亮。
-   - 添加 Loading 骨架屏 (Skeleton) 当数据正在加载时。
-   - 给笔记列表添加按 update_at 排序的逻辑（最近修改的在最上面）。
+1. Markdown 专属扩展增强：
+   - 安装并配置 `@tiptap/extension-task-list` 和 `@tiptap/extension-task-item`，实现 `- [ ]` 任务列表的交互体验。
+   - 安装 `lowlight` (common) 和 `@tiptap/extension-code-block-lowlight`，实现代码块的语法高亮（Syntax Highlighting）。
+   - 确保这些扩展的内容能正确被 `tiptap-markdown` 序列化和反序列化。
+
+2. 交互菜单 (Menu)：
+   - 添加 `@tiptap/extension-bubble-menu`。
+   - 当选中文字时，显示气泡菜单（提供 Bold, Italic, Code, Link 按钮）。
+   - *可选*：添加 `@tiptap/extension-floating-menu`，在空行左侧显示“+”号，用于快速插入标题、代码块或任务列表。
+
+3. UI 细节打磨：
+   - **Sidebar**：当前选中的笔记要有明显的背景高亮 (Active State)。
+   - **Loading**：添加骨架屏 (Skeleton) 效果，当笔记列表或详情正在加载时显示。
+   - **排序**：在 Sidebar 中，确保笔记按 `updated_at` 倒序排列（最近编辑的在最上面）。
+   - **日期格式化**：使用 `date-fns` 将时间戳格式化为友好格式 (如 "Just now", "2 hours ago")。
 
 ## 阶段 6: 部署准备 (Cloudflare)
 应用已经开发完成，现在准备部署到 Cloudflare。
