@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import { logger } from 'hono/logger'
 import { drizzle } from 'drizzle-orm/d1'
 import { notes } from './db/schema'
 import { eq, desc } from 'drizzle-orm'
@@ -12,7 +13,25 @@ type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>()
 
-app.use('*', cors())
+// 中间件配置
+app.use('*', logger())
+app.use('*', cors({
+  origin: ['https://nicenote.pages.dev', 'http://localhost:5173'],
+  allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+  exposeHeaders: ['Content-Length'],
+  maxAge: 600,
+  credentials: true,
+}))
+
+// 全局错误处理
+app.onError((err, c) => {
+  console.error(`Error: ${err.message}`)
+  return c.json({ 
+    error: 'Internal Server Error', 
+    message: err.message
+  }, 500)
+})
 
 app.get('/', (c) => c.json({ status: 'ok', message: 'Nicenote API is running' }))
 

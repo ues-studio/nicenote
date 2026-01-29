@@ -25,7 +25,7 @@
 		{
 			"binding": "DB",
 			"database_name": "nicenote-db",
-			"database_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+			"database_id": "49c6fb86-1c84-486b-bbcf-f4a612de6642"
 		},
 		{
 			"binding": "nicenote_db",
