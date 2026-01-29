@@ -1,4 +1,3 @@
-// @ts-ignore
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import { Markdown } from 'tiptap-markdown'
@@ -49,7 +48,7 @@ export default function Editor({ initialContent, onChange }: EditorProps) {
   })
 
   useEffect(() => {
-    if (editor && initialContent) {
+    if (editor) {
       const storage = editor.storage as any
       if (storage.markdown) {
         const currentMarkdown = storage.markdown.getMarkdown()
