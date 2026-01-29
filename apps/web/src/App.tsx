@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, Search, Trash2, FileText } from 'lucide-react'
+import { PlusIcon, MagnifyingGlassIcon, TrashIcon, DocumentTextIcon } from '@heroicons/react/24/outline'
 import { useNoteStore } from './store/useNoteStore'
 import type { Note } from './store/useNoteStore'
 import Editor from './components/Editor'
@@ -20,6 +20,13 @@ export default function App() {
   } = useNoteStore()
 
   const [search, setSearch] = useState('')
+  const [, setTick] = useState(0)
+
+  // 每分钟刷新一次页面，让 "1 minute ago" 动态变化
+  useEffect(() => {
+    const timer = setInterval(() => setTick(t => t + 1), 60000)
+    return () => clearInterval(timer)
+  }, [])
 
   // Debounced save function
   const debouncedSave = useCallback(
@@ -67,11 +74,11 @@ export default function App() {
               disabled={isLoading}
               className="p-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
-              <Plus className="w-4 h-4" />
+              <PlusIcon className="w-4 h-4" />
             </button>
           </div>
           <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <MagnifyingGlassIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <input
               type="search"
               placeholder="Search notes..."
@@ -107,7 +114,7 @@ export default function App() {
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 overflow-hidden">
-                    <FileText className={`w-4 h-4 shrink-0 ${currentNote?.id === note.id ? 'text-primary' : 'opacity-50'}`} />
+                    <DocumentTextIcon className={`w-4 h-4 shrink-0 ${currentNote?.id === note.id ? 'text-primary' : 'opacity-50'}`} />
                     <span className={`font-medium truncate ${currentNote?.id === note.id ? 'text-foreground' : ''}`}>
                       {note.title || 'Untitled'}
                     </span>
@@ -115,11 +122,15 @@ export default function App() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      deleteNote(note.id)
+                      if (confirm('Are you sure you want to delete this note?')) {
+                        deleteNote(note.id)
+                      }
                     }}
-                    className="opacity-0 group-hover:opacity-100 p-1 hover:text-destructive transition-all"
+                    className={`p-1.5 hover:bg-destructive/10 hover:text-destructive rounded-md transition-all shrink-0 ${
+                      currentNote?.id === note.id ? 'opacity-100' : 'opacity-30 group-hover:opacity-100'
+                    }`}
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <TrashIcon className="w-4 h-4" />
                   </button>
                 </div>
                 <div className="flex items-center justify-between mt-1">
@@ -167,7 +178,7 @@ export default function App() {
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
             <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
-              <FileText className="w-8 h-8 opacity-20" />
+              <DocumentTextIcon className="w-8 h-8 opacity-20" />
             </div>
             <p className="text-lg font-medium">Select a note to view or edit</p>
             <p className="text-sm opacity-70">Choose from the sidebar or create a new one</p>
@@ -175,7 +186,7 @@ export default function App() {
               onClick={() => createNote()}
               className="mt-6 flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
             >
-              <Plus className="w-4 h-4" />
+              <PlusIcon className="w-4 h-4" />
               Create New Note
             </button>
           </div>
