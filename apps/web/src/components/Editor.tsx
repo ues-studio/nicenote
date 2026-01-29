@@ -54,7 +54,7 @@ export default function Editor({ initialContent, onChange }: EditorProps) {
     if (storage.markdown) {
       const currentMarkdown = storage.markdown.getMarkdown()
       if (initialContent !== currentMarkdown) {
-        editor.commands.setContent(initialContent, false)
+        editor.commands.setContent(initialContent, { emitUpdate: false })
       }
     }
   }, [initialContent, editor])
