@@ -16,7 +16,7 @@ const app = new Hono<{ Bindings: Bindings }>()
 // 中间件配置
 app.use('*', logger())
 app.use('*', cors({
-  origin: ['https://nicenote.pages.dev', 'http://localhost:5173'],
+  origin: ['https://nicenote.app', 'https://nicenote.pages.dev', 'http://localhost:5173'],
   allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
   exposeHeaders: ['Content-Length'],
