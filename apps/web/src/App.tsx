@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, Search, Trash2, FileText, Loader2 } from 'lucide-react'
+import { Plus, Search, Trash2, FileText } from 'lucide-react'
 import { useNoteStore } from './store/useNoteStore'
 import type { Note } from './store/useNoteStore'
 import Editor from './components/Editor'

@@ -94,9 +94,28 @@
    - **日期格式化**：使用 `date-fns` 将时间戳格式化为友好格式 (如 "Just now", "2 hours ago")。
 
 ## 阶段 6: 部署准备 (Cloudflare)
-应用已经开发完成，现在准备部署到 Cloudflare。
+我们将使用 GitHub CI/CD 来部署应用，替代本地脚本。
+请帮我配置部署流程。
 
-1. 请检查根目录的 package.json，帮我编写一个 `deploy` script，能够同时构建 web 和 api。
-2. 对于 `apps/web`，配置为 Cloudflare Pages 部署。
-3. 对于 `apps/api`，配置为 Cloudflare Workers 部署。
-4. 告诉我如何处理 CORS 问题，确保前端 Pages 能访问后端 Workers。
+1. **后端部署 (GitHub Actions)**:
+   - 在项目根目录创建 `.github/workflows/deploy-api.yml`。
+   - 触发条件：当 `apps/api/**` 或 `packages/**` 发生变更并推送到 main 分支时触发。
+   - 步骤：
+     - Checkout 代码。
+     - 安装 pnpm 和依赖 (`pnpm install`).
+     - 运行 `deploy` 命令（目标是 `apps/api`）。
+     - 使用 `cloudflare/wrangler-action`。
+     - 需要用到 Secrets: `CLOUDFLARE_API_TOKEN` 和 `CLOUDFLARE_ACCOUNT_ID`。
+   - 请给出详细的 YAML 文件内容。
+
+2. **前端部署 (Cloudflare Pages)**:
+   - 请告诉我如何在 Cloudflare Dashboard 上配置 Pages 项目以连接此 GitHub 仓库。
+   - 针对 Monorepo，我应该如何设置：
+     - **Build command**: (例如 `pnpm run build --filter web`)
+     - **Build output directory**: (例如 `apps/web/dist`)
+     - **Root directory**: (通常设为 `/`)
+
+3. **跨域与环境变量**:
+   - 部署后，前端域名和后端域名会发生变化。
+   - 请告诉我如何在 Cloudflare Dashboard 中设置环境变量 (VITE_API_URL)，以便前端知道生产环境后端的地址。
+   - 请检查 `apps/api` 的 CORS 设置，确保它允许来自 Cloudflare Pages 域名的请求。

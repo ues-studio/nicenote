@@ -64,6 +64,7 @@ Thumbs.db
 .vscode/
 !.vscode/extensions.json
 .idea/
+.qoder/
 
 ############################
 # Misc
