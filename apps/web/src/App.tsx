@@ -2,11 +2,14 @@ import { useEffect, useState, useCallback } from 'react'
 import { PlusIcon, MagnifyingGlassIcon, TrashIcon, DocumentTextIcon } from '@heroicons/react/24/outline'
 import { useNoteStore } from './store/useNoteStore'
 import type { Note } from './store/useNoteStore'
-import Editor from './components/Editor'
+import { Editor } from '@nicenote/editor'
 import { debounce } from 'lodash'
 import { formatDistanceToNow } from 'date-fns'
+import { useTheme } from './hooks/useTheme'
 
 export default function App() {
+  // Initialize theme management
+  useTheme()
   const { 
     notes, 
     currentNote, 
@@ -22,7 +25,7 @@ export default function App() {
   const [search, setSearch] = useState('')
   const [, setTick] = useState(0)
 
-  // 每分钟刷新一次页面，让 "1 minute ago" 动态变化
+  // Refresh every minute to update "1 minute ago" dynamically
   useEffect(() => {
     const timer = setInterval(() => setTick(t => t + 1), 60000)
     return () => clearInterval(timer)
@@ -63,7 +66,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex h-screen w-full bg-background text-foreground font-sans overflow-hidden">
+    <div className="flex h-screen w-full font-sans overflow-hidden">
       {/* Sidebar */}
       <aside className="w-80 border-r border-border flex flex-col bg-muted/30">
         <div className="p-4 border-b border-border flex flex-col gap-4">
@@ -153,7 +156,7 @@ export default function App() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col bg-background">
+      <main className="flex-1 flex flex-col">
         {currentNote ? (
           <>
             <div className="px-8 pt-12 pb-4">

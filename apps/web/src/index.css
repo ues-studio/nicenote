@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* Tiptap Simple Editor Required Styles */
+@import "@/styles/_variables.scss";
+@import "@/styles/_keyframe-animations.scss";
+
 @theme {
   --color-background: hsl(0 0% 100%);
   --color-foreground: hsl(240 10% 3.9%);
@@ -22,95 +26,37 @@
   --radius: 0.5rem;
 }
 
+/* Dark mode theme overrides */
+.dark {
+  --color-background: hsl(240 10% 3.9%);
+  --color-foreground: hsl(0 0% 98%);
+  --color-muted: hsl(240 3.7% 15.9%);
+  --color-muted-foreground: hsl(240 5% 64.9%);
+  --color-popover: hsl(240 10% 3.9%);
+  --color-popover-foreground: hsl(0 0% 98%);
+  --color-border: hsl(240 3.7% 15.9%);
+  --color-input: hsl(240 3.7% 15.9%);
+  --color-primary: hsl(0 0% 98%);
+  --color-primary-foreground: hsl(240 5.9% 10%);
+  --color-secondary: hsl(240 3.7% 15.9%);
+  --color-secondary-foreground: hsl(0 0% 98%);
+  --color-accent: hsl(240 3.7% 15.9%);
+  --color-accent-foreground: hsl(0 0% 98%);
+  --color-destructive: hsl(0 62.8% 30.6%);
+  --color-destructive-foreground: hsl(0 0% 98%);
+  --color-ring: hsl(240 4.9% 83.9%);
+}
+
 @layer base {
   * {
     @apply border-border;
   }
+  /* Use Tiptap's color variables to support dark mode */
   body {
-    @apply bg-background text-foreground;
+    background-color: var(--tt-bg-color, hsl(0 0% 100%));
+    color: var(--tt-gray-light-a-900, hsl(240 10% 3.9%));
   }
-}
-
-/* Tiptap Code Highlighting */
-.prose pre {
-  @apply bg-muted text-muted-foreground p-4 rounded-lg overflow-x-auto;
-}
-
-.prose code {
-  @apply bg-muted px-1 py-0.5 rounded text-sm font-mono;
-}
-
-.prose pre code {
-  @apply bg-transparent p-0 text-sm;
-}
-
-.hljs-comment,
-.hljs-quote {
-  @apply text-muted-foreground/60 italic;
-}
-
-.hljs-keyword,
-.hljs-selector-tag,
-.hljs-subst {
-  @apply text-blue-600 font-semibold;
-}
-
-.hljs-number,
-.hljs-literal,
-.hljs-variable,
-.hljs-template-variable,
-.hljs-tag .hljs-attr {
-  @apply text-orange-600;
-}
-
-.hljs-string,
-.hljs-doctag {
-  @apply text-green-600;
-}
-
-.hljs-title,
-.hljs-section,
-.hljs-selector-id {
-  @apply text-purple-600 font-bold;
-}
-
-.hljs-subst {
-  @apply text-foreground;
-}
-
-.hljs-type,
-.hljs-class .hljs-title {
-  @apply text-yellow-600;
-}
-
-.hljs-attribute,
-.hljs-name,
-.hljs-tag {
-  @apply text-red-600;
-}
-
-/* Task List Styles */
-ul[data-type="taskList"] {
-  list-style: none;
-  padding: 0;
-}
-
-ul[data-type="taskList"] li {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  margin-bottom: 0.25rem;
-}
-
-ul[data-type="taskList"] label {
-  user-select: none;
-  margin-top: 0.2rem;
-}
-
-ul[data-type="taskList"] input[type="checkbox"] {
-  cursor: pointer;
-}
-
-ul[data-type="taskList"] div {
-  flex: 1;
+  .dark body {
+    color: var(--tt-gray-dark-a-900, hsl(0 0% 96%));
+  }
 }
