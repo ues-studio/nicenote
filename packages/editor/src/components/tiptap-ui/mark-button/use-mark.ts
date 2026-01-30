@@ -16,6 +16,8 @@ import { SubscriptIcon } from "@/components/tiptap-icons/subscript-icon"
 import { SuperscriptIcon } from "@/components/tiptap-icons/superscript-icon"
 import { UnderlineIcon } from "@/components/tiptap-icons/underline-icon"
 
+import { HighlighterIcon } from "@/components/tiptap-icons/highlighter-icon"
+
 export type Mark =
   | "bold"
   | "italic"
@@ -24,6 +26,7 @@ export type Mark =
   | "underline"
   | "superscript"
   | "subscript"
+  | "highlight"
 
 /**
  * Configuration for the mark functionality
@@ -56,6 +59,7 @@ export const markIcons = {
   code: Code2Icon,
   superscript: SuperscriptIcon,
   subscript: SubscriptIcon,
+  highlight: HighlighterIcon,
 }
 
 export const MARK_SHORTCUT_KEYS: Record<Mark, string> = {
@@ -66,6 +70,7 @@ export const MARK_SHORTCUT_KEYS: Record<Mark, string> = {
   code: "mod+e",
   superscript: "mod+.",
   subscript: "mod+,",
+  highlight: "mod+shift+h",
 }
 
 /**

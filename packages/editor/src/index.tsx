@@ -30,13 +30,12 @@ import { ImageUploadButton } from "@/components/tiptap-ui/image-upload-button"
 import { ListDropdownMenu } from "@/components/tiptap-ui/list-dropdown-menu"
 import { BlockquoteButton } from "@/components/tiptap-ui/blockquote-button"
 import { CodeBlockButton } from "@/components/tiptap-ui/code-block-button"
-import { ColorHighlightPopover, ColorHighlightPopoverContent, ColorHighlightPopoverButton } from "@/components/tiptap-ui/color-highlight-popover"
 import { LinkPopover, LinkContent, LinkButton } from "@/components/tiptap-ui/link-popover"
 import { MarkButton } from "@/components/tiptap-ui/mark-button"
 import { TextAlignButton } from "@/components/tiptap-ui/text-align-button"
 import { UndoRedoButton } from "@/components/tiptap-ui/undo-redo-button"
+import { SourceModeButton } from "@/components/tiptap-ui/source-mode-button"
 import { ArrowLeftIcon } from "@/components/tiptap-icons/arrow-left-icon"
-import { HighlighterIcon } from "@/components/tiptap-icons/highlighter-icon"
 import { LinkIcon } from "@/components/tiptap-icons/link-icon"
 import { useIsBreakpoint } from "@/hooks/use-is-breakpoint"
 import { useWindowSize } from "@/hooks/use-window-size"
@@ -55,16 +54,20 @@ import "@/components/tiptap-templates/simple/simple-editor.scss"
 interface EditorProps {
   initialContent?: string
   onChange?: (content: string) => void
+  isSourceMode?: boolean
+  onSourceModeChange?: (isSourceMode: boolean) => void
 }
 
 const MainToolbarContent = ({
-  onHighlighterClick,
   onLinkClick,
   isMobile,
+  isSourceMode,
+  onToggleSourceMode,
 }: {
-  onHighlighterClick: () => void
   onLinkClick: () => void
   isMobile: boolean
+  isSourceMode: boolean
+  onToggleSourceMode: () => void
 }) => {
   return (
     <>
@@ -95,11 +98,7 @@ const MainToolbarContent = ({
         <MarkButton type="strike" />
         <MarkButton type="code" />
         <MarkButton type="underline" />
-        {!isMobile ? (
-          <ColorHighlightPopover />
-        ) : (
-          <ColorHighlightPopoverButton onClick={onHighlighterClick} />
-        )}
+        <MarkButton type="highlight" />
         {!isMobile ? <LinkPopover /> : <LinkButton onClick={onLinkClick} />}
       </ToolbarGroup>
 
@@ -125,47 +124,48 @@ const MainToolbarContent = ({
         <ImageUploadButton text="Add" />
       </ToolbarGroup>
 
+      <ToolbarSeparator />
+
+      <ToolbarGroup>
+        <SourceModeButton isActive={isSourceMode} onToggle={onToggleSourceMode} />
+      </ToolbarGroup>
+
       <Spacer />
     </>
   )
 }
 
 const MobileToolbarContent = ({
-  type,
   onBack,
 }: {
-  type: "highlighter" | "link"
   onBack: () => void
 }) => (
   <>
     <ToolbarGroup>
       <Button data-style="ghost" onClick={onBack}>
         <ArrowLeftIcon className="tiptap-button-icon" />
-        {type === "highlighter" ? (
-          <HighlighterIcon className="tiptap-button-icon" />
-        ) : (
-          <LinkIcon className="tiptap-button-icon" />
-        )}
+        <LinkIcon className="tiptap-button-icon" />
       </Button>
     </ToolbarGroup>
 
     <ToolbarSeparator />
 
-    {type === "highlighter" ? (
-      <ColorHighlightPopoverContent />
-    ) : (
-      <LinkContent />
-    )}
+    <LinkContent />
   </>
 )
 
-export function Editor({ initialContent = '', onChange }: EditorProps) {
+export function Editor({ initialContent = '', onChange, isSourceMode: externalIsSourceMode, onSourceModeChange }: EditorProps) {
   const isMobile = useIsBreakpoint()
   const { height } = useWindowSize()
-  const [mobileView, setMobileView] = useState<"main" | "highlighter" | "link">("main")
+  const [mobileView, setMobileView] = useState<"main" | "link">("main")
+  const [internalIsSourceMode, setInternalIsSourceMode] = useState(false)
   const toolbarRef = useRef<HTMLDivElement>(null)
   const isInitializing = useRef(true)
   const lastContent = useRef(initialContent)
+
+  // Use external state if provided, otherwise use internal state
+  const isSourceMode = externalIsSourceMode !== undefined ? externalIsSourceMode : internalIsSourceMode
+  const setIsSourceMode = onSourceModeChange || setInternalIsSourceMode
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -190,7 +190,7 @@ export function Editor({ initialContent = '', onChange }: EditorProps) {
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       TaskList,
       TaskItem.configure({ nested: true }),
-      Highlight.configure({ multicolor: true }),
+      Highlight,
       Image,
       Typography,
       Superscript,
@@ -267,6 +267,10 @@ export function Editor({ initialContent = '', onChange }: EditorProps) {
     }
   }, [isMobile, mobileView])
 
+  const handleToggleSourceMode = () => {
+    setIsSourceMode(!isSourceMode)
+  }
+
   return (
     <div className="simple-editor-wrapper">
       <EditorContext.Provider value={{ editor }}>
@@ -282,23 +286,51 @@ export function Editor({ initialContent = '', onChange }: EditorProps) {
         >
           {mobileView === "main" ? (
             <MainToolbarContent
-              onHighlighterClick={() => setMobileView("highlighter")}
               onLinkClick={() => setMobileView("link")}
               isMobile={isMobile}
+              isSourceMode={isSourceMode}
+              onToggleSourceMode={handleToggleSourceMode}
             />
           ) : (
             <MobileToolbarContent
-              type={mobileView === "highlighter" ? "highlighter" : "link"}
               onBack={() => setMobileView("main")}
             />
           )}
         </Toolbar>
 
-        <EditorContent
-          editor={editor}
-          role="presentation"
-          className="simple-editor-content"
-        />
+        {isSourceMode ? (
+          <div className="simple-editor-content">
+            <textarea
+              className="source-code-editor"
+              value={editor?.getMarkdown() || ''}
+              onChange={(e) => {
+                if (editor) {
+                  isInitializing.current = true
+                  editor.commands.setContent(e.target.value, { contentType: 'markdown' })
+                  lastContent.current = e.target.value
+                  setTimeout(() => {
+                    isInitializing.current = false
+                  }, 0)
+                }
+              }}
+              onBlur={() => {
+                // Trigger onChange when losing focus
+                if (editor && onChange) {
+                  const markdown = editor.getMarkdown()
+                  onChange(markdown)
+                }
+              }}
+              placeholder="Enter Markdown source code..."
+              spellCheck={false}
+            />
+          </div>
+        ) : (
+          <EditorContent
+            editor={editor}
+            role="presentation"
+            className="simple-editor-content"
+          />
+        )}
       </EditorContext.Provider>
     </div>
   )

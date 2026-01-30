@@ -61,7 +61,7 @@ body,
 }
 
 .simple-editor-content {
-  max-width: 648px;
+  max-width: 820px;
   width: 100%;
   margin: 0 auto;
   height: 100%;
@@ -72,11 +72,33 @@ body,
 
 .simple-editor-content .tiptap.ProseMirror.simple-editor {
   flex: 1;
-  padding: 3rem 3rem 30vh;
+  padding: 3rem 0 30vh;
 }
 
 @media screen and (max-width: 480px) {
   .simple-editor-content .tiptap.ProseMirror.simple-editor {
-    padding: 1rem 1.5rem 30vh;
+    padding: 1rem 0 30vh;
   }
+
+  .source-code-editor {
+    padding: 1rem 0 30vh;
+    font-size: 13px;
+  }
+}
+
+.source-code-editor {
+  flex: 1;
+  width: 100%;
+  padding: 3rem 0 30vh;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", "Consolas", "source-code-pro", monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--tt-theme-text);
+  background-color: var(--tt-bg-color);
+  border: none;
+  outline: none;
+  resize: none;
+  tab-size: 2;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }

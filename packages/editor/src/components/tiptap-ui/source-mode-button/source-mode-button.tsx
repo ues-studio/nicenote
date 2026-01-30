@@ -1,0 +1,46 @@
+"use client"
+
+import { Button } from "@/components/tiptap-ui-primitive/button"
+import { FileCodeIcon } from "@/components/tiptap-icons/file-code-icon"
+import { useTiptapEditor } from "@/hooks/use-tiptap-editor"
+import type { Editor } from "@tiptap/react"
+
+export interface SourceModeButtonConfig {
+  /**
+   * The Tiptap editor instance
+   */
+  editor?: Editor | null
+  /**
+   * Whether source mode is active
+   */
+  isActive?: boolean
+  /**
+   * Callback when toggle button is clicked
+   */
+  onToggle?: () => void
+}
+
+/**
+ * Button component for toggling between WYSIWYG and source code mode
+ */
+export function SourceModeButton({ 
+  editor: providedEditor, 
+  isActive = false,
+  onToggle
+}: SourceModeButtonConfig) {
+  const { editor } = useTiptapEditor(providedEditor)
+
+  if (!editor) return null
+
+  return (
+    <Button
+      data-style="ghost"
+      data-active={isActive}
+      onClick={onToggle}
+      aria-label={isActive ? "Switch to WYSIWYG mode" : "Switch to source code mode"}
+      title={isActive ? "WYSIWYG Mode" : "Source Code Mode"}
+    >
+      <FileCodeIcon className="tiptap-button-icon" />
+    </Button>
+  )
+}
