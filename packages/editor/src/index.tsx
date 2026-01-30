@@ -13,6 +13,10 @@ import { Subscript } from "@tiptap/extension-subscript"
 import { Superscript } from "@tiptap/extension-superscript"
 import { Selection } from "@tiptap/extensions"
 import { Markdown } from "@tiptap/markdown"
+import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight"
+import { ReactNodeViewRenderer } from "@tiptap/react"
+import { all, createLowlight } from "lowlight"
+
 import { HorizontalRule } from "@/components/tiptap-node/horizontal-rule-node/horizontal-rule-node-extension"
 import { ImageUploadNode } from "@/components/tiptap-node/image-upload-node/image-upload-node-extension"
 import { handleImageUpload, MAX_FILE_SIZE } from "@/lib/tiptap-utils"
@@ -30,6 +34,7 @@ import { ImageUploadButton } from "@/components/tiptap-ui/image-upload-button"
 import { ListDropdownMenu } from "@/components/tiptap-ui/list-dropdown-menu"
 import { BlockquoteButton } from "@/components/tiptap-ui/blockquote-button"
 import { CodeBlockButton } from "@/components/tiptap-ui/code-block-button"
+import { CodeBlockComponent } from "@/components/tiptap-node/code-block-node/code-block"
 import { LinkPopover, LinkContent, LinkButton } from "@/components/tiptap-ui/link-popover"
 import { MarkButton } from "@/components/tiptap-ui/mark-button"
 import { TextAlignButton } from "@/components/tiptap-ui/text-align-button"
@@ -57,6 +62,8 @@ interface EditorProps {
   isSourceMode?: boolean
   onSourceModeChange?: (isSourceMode: boolean) => void
 }
+
+const lowlight = createLowlight(all)
 
 const MainToolbarContent = ({
   onLinkClick,
@@ -181,11 +188,17 @@ export function Editor({ initialContent = '', onChange, isSourceMode: externalIs
     extensions: [
       StarterKit.configure({
         horizontalRule: false,
+        codeBlock: false,
         link: {
           openOnClick: false,
           enableClickSelection: true,
         },
       }),
+      CodeBlockLowlight.extend({
+        addNodeView() {
+          return ReactNodeViewRenderer(CodeBlockComponent)
+        },
+      }).configure({ lowlight }),
       HorizontalRule,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       TaskList,
