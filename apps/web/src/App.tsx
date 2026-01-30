@@ -6,6 +6,7 @@ import { Editor } from '@nicenote/editor'
 import { debounce } from 'lodash'
 import { formatDistanceToNow } from 'date-fns'
 import { useTheme } from './hooks/useTheme'
+import { ThemeToggle } from './components/ThemeToggle'
 
 export default function App() {
   // Initialize theme management
@@ -72,13 +73,16 @@ export default function App() {
         <div className="p-4 border-b border-border flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-semibold tracking-tight">Nicenote</h1>
-            <button 
-              onClick={() => createNote()}
-              disabled={isLoading}
-              className="p-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-            >
-              <PlusIcon className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <button 
+                onClick={() => createNote()}
+                disabled={isLoading}
+                className="p-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+              >
+                <PlusIcon className="w-4 h-4" />
+              </button>
+            </div>
           </div>
           <div className="relative">
             <MagnifyingGlassIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
