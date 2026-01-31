@@ -13,6 +13,7 @@ import { Highlight } from "@tiptap/extension-highlight"
 import { Subscript } from "@tiptap/extension-subscript"
 import { Superscript } from "@tiptap/extension-superscript"
 import { Selection } from "@tiptap/extensions"
+import { TableOfContents } from "@tiptap/extension-table-of-contents"
 
 // --- UI Primitives ---
 import { Button } from "@/components/tiptap-ui-primitive/button"
@@ -53,6 +54,7 @@ import {
 import { MarkButton } from "@/components/tiptap-ui/mark-button"
 import { TextAlignButton } from "@/components/tiptap-ui/text-align-button"
 import { UndoRedoButton } from "@/components/tiptap-ui/undo-redo-button"
+import { ToC } from "@/components/tiptap-ui/table-of-contents"
 
 // --- Icons ---
 import { ArrowLeftIcon } from "@/components/tiptap-icons/arrow-left-icon"
@@ -69,6 +71,7 @@ import { handleImageUpload, MAX_FILE_SIZE } from "@/lib/tiptap-utils"
 
 // --- Styles ---
 import "@/components/tiptap-templates/simple/simple-editor.scss"
+import "@/components/tiptap-ui/table-of-contents/toc.scss"
 
 import content from "@/components/tiptap-templates/simple/data/content.json"
 
@@ -211,6 +214,7 @@ export function SimpleEditor() {
       Superscript,
       Subscript,
       Selection,
+      TableOfContents,
       ImageUploadNode.configure({
         accept: "image/*",
         maxSize: MAX_FILE_SIZE,
@@ -265,6 +269,8 @@ export function SimpleEditor() {
           role="presentation"
           className="simple-editor-content"
         />
+
+        <ToC editor={editor} />
       </EditorContext.Provider>
     </div>
   )

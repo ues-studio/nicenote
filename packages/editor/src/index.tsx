@@ -16,6 +16,7 @@ import { Markdown } from "@tiptap/markdown"
 import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight"
 import { ReactNodeViewRenderer } from "@tiptap/react"
 import { all, createLowlight } from "lowlight"
+import { TableOfContents } from "@tiptap/extension-table-of-contents"
 
 import { HorizontalRule } from "@/components/tiptap-node/horizontal-rule-node/horizontal-rule-node-extension"
 import { ImageUploadNode } from "@/components/tiptap-node/image-upload-node/image-upload-node-extension"
@@ -40,6 +41,7 @@ import { MarkButton } from "@/components/tiptap-ui/mark-button"
 import { TextAlignButton } from "@/components/tiptap-ui/text-align-button"
 import { UndoRedoButton } from "@/components/tiptap-ui/undo-redo-button"
 import { SourceModeButton } from "@/components/tiptap-ui/source-mode-button"
+import { ToC } from "@/components/tiptap-ui/table-of-contents"
 import { ArrowLeftIcon } from "@/components/tiptap-icons/arrow-left-icon"
 import { LinkIcon } from "@/components/tiptap-icons/link-icon"
 import { useIsBreakpoint } from "@/hooks/use-is-breakpoint"
@@ -55,6 +57,7 @@ import "@/components/tiptap-node/image-node/image-node.scss"
 import "@/components/tiptap-node/heading-node/heading-node.scss"
 import "@/components/tiptap-node/paragraph-node/paragraph-node.scss"
 import "@/components/tiptap-templates/simple/simple-editor.scss"
+import "@/components/tiptap-ui/table-of-contents/toc.scss"
 
 interface EditorProps {
   initialContent?: string
@@ -216,6 +219,7 @@ export function Editor({ initialContent = '', onChange, isSourceMode: externalIs
         upload: handleImageUpload,
         onError: (error: Error) => console.error("Upload failed:", error),
       }),
+      TableOfContents,
       // Markdown MUST be the last extension
       Markdown,
     ],
@@ -344,6 +348,8 @@ export function Editor({ initialContent = '', onChange, isSourceMode: externalIs
             className="simple-editor-content"
           />
         )}
+
+        <ToC editor={editor} />
       </EditorContext.Provider>
     </div>
   )
