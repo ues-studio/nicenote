@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { PlusIcon, MagnifyingGlassIcon, TrashIcon, DocumentTextIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
+import { Plus, Search, Trash2, FileText, ArrowRightFromLine } from 'lucide-react'
 import { useNoteStore } from './store/useNoteStore'
 import type { Note } from './store/useNoteStore'
 import { Editor } from '@nicenote/editor'
@@ -80,25 +80,35 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-full font-sans overflow-hidden relative">
-      {/* Mobile Menu Button */}
-      {isMobile && (
-        <button
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="fixed top-4 left-4 z-50 p-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg"
-        >
-          {isSidebarOpen ? <XMarkIcon className="w-5 h-5" /> : <Bars3Icon className="w-5 h-5" />}
-        </button>
+      {/* Expand Button - Visible when sidebar is closed */}
+      {!isSidebarOpen && (
+        <div className="fixed left-4 top-4 z-50">
+          <button 
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 rounded-md bg-background hover:bg-accent transition-colors shadow-sm"
+          >
+            <ArrowRightFromLine className="w-5 h-5" />
+          </button>
+        </div>
       )}
 
       {/* Sidebar */}
       <aside className={`
         w-80 border-r border-border flex flex-col
-        ${isMobile ? 'fixed inset-y-0 left-0 z-40 transform transition-transform duration-300 bg-background' : 'bg-muted/30'}
-        ${isMobile && !isSidebarOpen ? '-translate-x-full' : 'translate-x-0'}
+        ${isMobile ? 'fixed inset-y-0 left-0 z-40 transform transition-transform duration-300 bg-background' : 'fixed inset-y-0 left-0 z-40 transform transition-transform duration-300 bg-background'}
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="p-4 border-b border-border flex flex-col gap-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold tracking-tight">Nicenote</h1>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="p-1.5 rounded-md bg-background hover:bg-accent transition-colors"
+              >
+                <ArrowRightFromLine className={`w-5 h-5 transition-transform duration-300 ${isSidebarOpen ? 'rotate-180' : ''}`} />
+              </button>
+              <h1 className="text-xl font-semibold tracking-tight">Nicenote</h1>
+            </div>
             <div className="flex items-center gap-2">
               <ThemeToggle />
               <button 
@@ -106,12 +116,12 @@ export default function App() {
                 disabled={isLoading}
                 className="p-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
-                <PlusIcon className="w-4 h-4" />
+                <Plus className="w-4 h-4" />
               </button>
             </div>
           </div>
           <div className="relative">
-            <MagnifyingGlassIcon className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <input
               type="search"
               placeholder="Search notes..."
@@ -147,7 +157,7 @@ export default function App() {
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 overflow-hidden">
-                    <DocumentTextIcon className={`w-4 h-4 shrink-0 ${currentNote?.id === note.id ? 'text-primary' : 'opacity-50'}`} />
+                    <FileText className={`w-4 h-4 shrink-0 ${currentNote?.id === note.id ? 'text-primary' : 'opacity-50'}`} />
                     <span className={`font-medium truncate ${currentNote?.id === note.id ? 'text-foreground' : ''}`}>
                       {note.title || 'Untitled'}
                     </span>
@@ -163,7 +173,7 @@ export default function App() {
                       currentNote?.id === note.id ? 'opacity-100' : 'opacity-30 group-hover:opacity-100'
                     }`}
                   >
-                    <TrashIcon className="w-4 h-4" />
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
                 <div className="flex items-center justify-between mt-1">
@@ -185,16 +195,10 @@ export default function App() {
         </div>
       </aside>
 
-      {/* Overlay for mobile */}
-      {isMobile && isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-30"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-
       {/* Main Content */}
-      <main className="flex-1 flex flex-col">
+      <main className={`flex-1 flex flex-col transition-all duration-300 ${
+        isSidebarOpen ? 'ml-80' : 'ml-0'
+      }`}>
         {currentNote ? (
           <>
             <div className="px-8 pt-12 pb-4">
@@ -219,7 +223,7 @@ export default function App() {
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
             <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
-              <DocumentTextIcon className="w-8 h-8 opacity-20" />
+              <FileText className="w-8 h-8 opacity-20" />
             </div>
             <p className="text-lg font-medium">Select a note to view or edit</p>
             <p className="text-sm opacity-70">Choose from the sidebar or create a new one</p>
@@ -227,7 +231,7 @@ export default function App() {
               onClick={() => createNote()}
               className="mt-6 flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
             >
-              <PlusIcon className="w-4 h-4" />
+              <Plus className="w-4 h-4" />
               Create New Note
             </button>
           </div>

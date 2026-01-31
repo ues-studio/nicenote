@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { MoonIcon, SunIcon } from '@heroicons/react/24/outline'
+import { Moon, Sun } from 'lucide-react'
 
 export function ThemeToggle() {
   // Initialize from DOM state (set by index.html and useTheme hook)
@@ -21,9 +21,9 @@ export function ThemeToggle() {
       className="p-2 rounded-md hover:bg-accent transition-colors"
     >
       {isDarkMode ? (
-        <MoonIcon className="w-5 h-5" />
+        <Moon className="w-5 h-5" />
       ) : (
-        <SunIcon className="w-5 h-5" />
+        <Sun className="w-5 h-5" />
       )}
     </button>
   )
