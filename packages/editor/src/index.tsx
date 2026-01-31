@@ -17,6 +17,7 @@ import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight"
 import { ReactNodeViewRenderer } from "@tiptap/react"
 import { all, createLowlight } from "lowlight"
 import { TableOfContents } from "@tiptap/extension-table-of-contents"
+import { Placeholder } from "@tiptap/extension-placeholder"
 
 import { HorizontalRule } from "@/components/tiptap-node/horizontal-rule-node/horizontal-rule-node-extension"
 import { ImageUploadNode } from "@/components/tiptap-node/image-upload-node/image-upload-node-extension"
@@ -56,7 +57,7 @@ import "@/components/tiptap-node/list-node/list-node.scss"
 import "@/components/tiptap-node/image-node/image-node.scss"
 import "@/components/tiptap-node/heading-node/heading-node.scss"
 import "@/components/tiptap-node/paragraph-node/paragraph-node.scss"
-import "@/components/tiptap-templates/simple/simple-editor.scss"
+import "@/styles/_editor-base.scss"
 import "@/components/tiptap-ui/table-of-contents/toc.scss"
 
 interface EditorProps {
@@ -220,6 +221,9 @@ export function Editor({ initialContent = '', onChange, isSourceMode: externalIs
         onError: (error: Error) => console.error("Upload failed:", error),
       }),
       TableOfContents,
+      Placeholder.configure({
+        placeholder: "输入 \" / \" 快速插入内容",
+      }),
       // Markdown MUST be the last extension
       Markdown,
     ],

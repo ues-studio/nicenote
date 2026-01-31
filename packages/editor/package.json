@@ -24,6 +24,7 @@
     "@tiptap/extension-horizontal-rule": "^3.18.0",
     "@tiptap/extension-image": "^3.18.0",
     "@tiptap/extension-list": "^3.18.0",
+    "@tiptap/extension-placeholder": "^3.18.0",
     "@tiptap/extension-subscript": "^3.18.0",
     "@tiptap/extension-superscript": "^3.18.0",
     "@tiptap/extension-table-of-contents": "^3.18.0",
