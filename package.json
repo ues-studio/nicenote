@@ -1,8 +1,13 @@
 {
   "name": "nicenote",
   "private": true,
+  "packageManager": "pnpm@10.28.2",
   "scripts": {
-    "dev": "pnpm -r --parallel dev",
-    "build": "pnpm -r build"
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint"
+  },
+  "devDependencies": {
+    "turbo": "^2.8.1"
   }
 }

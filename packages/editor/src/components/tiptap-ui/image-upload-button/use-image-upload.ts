@@ -12,7 +12,7 @@ import { useIsBreakpoint } from "@/hooks/use-is-breakpoint"
 import { isExtensionAvailable } from "@/lib/tiptap-utils"
 
 // --- Icons ---
-import { ImagePlusIcon } from "@/components/tiptap-icons/image-plus-icon"
+import { ImagePlus } from "lucide-react"
 
 export const IMAGE_UPLOAD_SHORTCUT_KEY = "mod+shift+i"
 
@@ -187,6 +187,6 @@ export function useImageUpload(config?: UseImageUploadConfig) {
     canInsert,
     label: "Add image",
     shortcutKeys: IMAGE_UPLOAD_SHORTCUT_KEY,
-    Icon: ImagePlusIcon,
+    Icon: ImagePlus,
   }
 }

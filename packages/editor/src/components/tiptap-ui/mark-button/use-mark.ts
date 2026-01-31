@@ -8,15 +8,16 @@ import { useTiptapEditor } from "@/hooks/use-tiptap-editor"
 import { isMarkInSchema, isNodeTypeSelected } from "@/lib/tiptap-utils"
 
 // --- Icons ---
-import { BoldIcon } from "@/components/tiptap-icons/bold-icon"
-import { Code2Icon } from "@/components/tiptap-icons/code2-icon"
-import { ItalicIcon } from "@/components/tiptap-icons/italic-icon"
-import { StrikeIcon } from "@/components/tiptap-icons/strike-icon"
-import { SubscriptIcon } from "@/components/tiptap-icons/subscript-icon"
-import { SuperscriptIcon } from "@/components/tiptap-icons/superscript-icon"
-import { UnderlineIcon } from "@/components/tiptap-icons/underline-icon"
-
-import { HighlighterIcon } from "@/components/tiptap-icons/highlighter-icon"
+import {
+  Bold,
+  Code2,
+  Italic,
+  Strikethrough,
+  Subscript,
+  Superscript,
+  Underline,
+  Highlighter,
+} from "lucide-react"
 
 export type Mark =
   | "bold"
@@ -52,14 +53,14 @@ export interface UseMarkConfig {
 }
 
 export const markIcons = {
-  bold: BoldIcon,
-  italic: ItalicIcon,
-  underline: UnderlineIcon,
-  strike: StrikeIcon,
-  code: Code2Icon,
-  superscript: SuperscriptIcon,
-  subscript: SubscriptIcon,
-  highlight: HighlighterIcon,
+  bold: Bold,
+  italic: Italic,
+  underline: Underline,
+  strike: Strikethrough,
+  code: Code2,
+  superscript: Superscript,
+  subscript: Subscript,
+  highlight: Highlighter,
 }
 
 export const MARK_SHORTCUT_KEYS: Record<Mark, string> = {

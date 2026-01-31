@@ -5,7 +5,7 @@ import { type Editor } from "@tiptap/react"
 import { useTiptapEditor } from "@/hooks/use-tiptap-editor"
 
 // --- Icons ---
-import { ChevronDownIcon } from "@/components/tiptap-icons/chevron-down-icon"
+import { ChevronDown } from "lucide-react"
 
 // --- Tiptap UI ---
 import { ListButton, type ListType } from "@/components/tiptap-ui/list-button"
@@ -94,7 +94,7 @@ export function ListDropdownMenu({
           {...props}
         >
           <Icon className="tiptap-button-icon" />
-          <ChevronDownIcon className="tiptap-button-dropdown-small" />
+          <ChevronDown className="tiptap-button-dropdown-small" />
         </Button>
       </DropdownMenuTrigger>
 

@@ -43,8 +43,7 @@ import { TextAlignButton } from "@/components/tiptap-ui/text-align-button"
 import { UndoRedoButton } from "@/components/tiptap-ui/undo-redo-button"
 import { SourceModeButton } from "@/components/tiptap-ui/source-mode-button"
 import { ToC } from "@/components/tiptap-ui/table-of-contents"
-import { ArrowLeftIcon } from "@/components/tiptap-icons/arrow-left-icon"
-import { LinkIcon } from "@/components/tiptap-icons/link-icon"
+import { ArrowLeft, Link } from "lucide-react"
 import { useIsBreakpoint } from "@/hooks/use-is-breakpoint"
 import { useWindowSize } from "@/hooks/use-window-size"
 import { useCursorVisibility } from "@/hooks/use-cursor-visibility"
@@ -154,8 +153,8 @@ const MobileToolbarContent = ({
   <>
     <ToolbarGroup>
       <Button data-style="ghost" onClick={onBack}>
-        <ArrowLeftIcon className="tiptap-button-icon" />
-        <LinkIcon className="tiptap-button-icon" />
+        <ArrowLeft className="tiptap-button-icon" />
+        <Link className="tiptap-button-icon" />
       </Button>
     </ToolbarGroup>
 

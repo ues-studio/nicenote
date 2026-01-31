@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "@/components/tiptap-ui-primitive/button"
-import { FileCodeIcon } from "@/components/tiptap-icons/file-code-icon"
+import { FileCode } from "lucide-react"
 import { useTiptapEditor } from "@/hooks/use-tiptap-editor"
 import type { Editor } from "@tiptap/react"
 
@@ -40,7 +40,7 @@ export function SourceModeButton({
       aria-label={isActive ? "Switch to WYSIWYG mode" : "Switch to source code mode"}
       title={isActive ? "WYSIWYG Mode" : "Source Code Mode"}
     >
-      <FileCodeIcon className="tiptap-button-icon" />
+      <FileCode className="tiptap-button-icon" />
     </Button>
   )
 }
