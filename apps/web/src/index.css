@@ -1,0 +1,264 @@
+@import 'tailwindcss';
+@plugin "@tailwindcss/typography";
+@source "../../packages/**/*.{ts,tsx}";
+@config "../tailwind.config.ts";
+
+/* Tiptap Simple Editor Required Styles */
+@import '@nicenote/editor/src/styles/editor-styles.css';
+
+@theme {
+  /* Auto-generated from @nicenote/tokens */
+
+  /* Primary colors */
+  --color-primary: #2563EB;
+  --color-primary-hover: #1D4ED8;
+  --color-primary-active: #1E40AF;
+  --color-primary-focus: #3B82F6;
+  --color-primary-disabled: #93C5FD;
+  --color-primary-text: #1D4ED8;
+  --color-primary-bg: #EFF6FF;
+  --color-primary-foreground: #FFFFFF;
+
+  /* Secondary colors */
+  --color-secondary: #7C3AED;
+  --color-secondary-hover: #6D28D9;
+  --color-secondary-active: #5B21B6;
+  --color-secondary-disabled: #C4B5FD;
+  --color-secondary-text: #6D28D9;
+  --color-secondary-bg: #F5F3FF;
+  --color-secondary-foreground: #111827;
+
+  /* Background and foreground */
+  --color-background: #FFFFFF;
+  --color-foreground: #111827;
+
+  /* Muted */
+  --color-muted: #F9FAFB;
+  --color-muted-foreground: #4B5563;
+
+  /* Border */
+  --color-border: #E5E7EB;
+  --color-ring: #3B82F6;
+
+  /* Accent */
+  --color-accent: #E5E7EB;
+  --color-accent-foreground: #1D4ED8;
+
+  /* Active state */
+  --color-active: #F3F4F6;
+  --color-active-foreground: #1D4ED8;
+
+  /* Hover state */
+  --color-hover: #E5E7EB;
+  --color-hover-foreground: #1D4ED8;
+
+  /* Destructive */
+  --color-destructive: #EF4444;
+  --color-destructive-hover: #DC2626;
+  --color-destructive-foreground: #FFFFFF;
+  --color-destructive-text: #B91C1C;
+  --color-destructive-bg: #FEF2F2;
+  --color-destructive-border: #FCA5A5;
+
+  /* Success */
+  --color-success: #10B981;
+  --color-success-hover: #059669;
+  --color-success-text: #047857;
+  --color-success-bg: #ECFDF5;
+  --color-success-border: #6EE7B7;
+
+  /* Warning */
+  --color-warning: #F59E0B;
+  --color-warning-hover: #D97706;
+  --color-warning-text: #B45309;
+  --color-warning-bg: #FFFBEB;
+  --color-warning-border: #FCD34D;
+
+  /* Info */
+  --color-info: #3B82F6;
+  --color-info-hover: #2563EB;
+  --color-info-text: #1D4ED8;
+  --color-info-bg: #EFF6FF;
+  --color-info-border: #93C5FD;
+
+  /* Popover */
+  --color-popover: #FFFFFF;
+  --color-popover-foreground: #111827;
+
+  /* Card */
+  --color-card: #FFFFFF;
+  --color-card-foreground: #111827;
+}
+
+
+/* Dark mode */
+.dark {
+  /* Primary colors */
+  --color-primary: #3B82F6;
+  --color-primary-hover: #60A5FA;
+  --color-primary-active: #93C5FD;
+  --color-primary-focus: #2563EB;
+  --color-primary-disabled: #1E40AF;
+  --color-primary-text: #374151;
+  --color-primary-bg: #172554;
+  --color-primary-foreground: #111827;
+
+  /* Secondary colors */
+  --color-secondary: #8B5CF6;
+  --color-secondary-hover: #A78BFA;
+  --color-secondary-active: #C4B5FD;
+  --color-secondary-disabled: #5B21B6;
+  --color-secondary-text: #A78BFA;
+  --color-secondary-bg: #2e1065;
+  --color-secondary-foreground: #F9FAFB;
+
+  /* Background and foreground */
+  --color-background: #111827;
+  --color-foreground: #F9FAFB;
+
+  /* Muted */
+  --color-muted: #1F2937;
+  --color-muted-foreground: #9CA3AF;
+
+  /* Border */
+  --color-border: #374151;
+  --color-ring: #3B82F6;
+
+  /* Accent */
+  --color-accent: #374151;
+  --color-accent-foreground: #374151;
+
+  /* Active state */
+  --color-active: #374151;
+  --color-active-foreground: #374151;
+
+  /* Hover state */
+  --color-hover: #374151;
+  --color-hover-foreground: #374151;
+
+  /* Destructive */
+  --color-destructive: #EF4444;
+  --color-destructive-hover: #F87171;
+  --color-destructive-foreground: #111827;
+  --color-destructive-text: #F87171;
+  --color-destructive-bg: #450a0a;
+  --color-destructive-border: #991B1B;
+
+  /* Success */
+  --color-success: #10B981;
+  --color-success-hover: #34D399;
+  --color-success-text: #34D399;
+  --color-success-bg: #052e16;
+  --color-success-border: #065F46;
+
+  /* Warning */
+  --color-warning: #F59E0B;
+  --color-warning-hover: #FBBF24;
+  --color-warning-text: #FBBF24;
+  --color-warning-bg: #422006;
+  --color-warning-border: #92400E;
+
+  /* Info */
+  --color-info: #3B82F6;
+  --color-info-hover: #60A5FA;
+  --color-info-text: #60A5FA;
+  --color-info-bg: #172554;
+  --color-info-border: #1E40AF;
+
+  /* Popover */
+  --color-popover: #111827;
+  --color-popover-foreground: #F9FAFB;
+
+  /* Card */
+  --color-card: #111827;
+  --color-card-foreground: #F9FAFB;
+}
+
+@layer base {
+  /* Explicitly set CSS variables on :root for light mode */
+  :root {
+    --color-primary: #2563EB;
+    --color-primary-hover: #1D4ED8;
+    --color-primary-active: #1E40AF;
+    --color-primary-focus: #3B82F6;
+    --color-primary-disabled: #93C5FD;
+    --color-primary-text: #1D4ED8;
+    --color-primary-bg: #EFF6FF;
+    --color-primary-foreground: #FFFFFF;
+
+    --color-secondary: #7C3AED;
+    --color-secondary-hover: #6D28D9;
+    --color-secondary-active: #5B21B6;
+    --color-secondary-disabled: #C4B5FD;
+    --color-secondary-text: #6D28D9;
+    --color-secondary-bg: #F5F3FF;
+    --color-secondary-foreground: #111827;
+
+    --color-background: #FFFFFF;
+    --color-foreground: #111827;
+
+    --color-muted: #F9FAFB;
+    --color-muted-foreground: #4B5563;
+
+    --color-border: #E5E7EB;
+    --color-input: #E5E7EB;
+    --color-ring: #3B82F6;
+
+    --color-accent: #E5E7EB;
+    --color-accent-foreground: #1D4ED8;
+
+    --color-active: #F3F4F6;
+    --color-active-foreground: #1D4ED8;
+
+    --color-hover: #E5E7EB;
+    --color-hover-foreground: #1D4ED8;
+
+    --color-destructive: #EF4444;
+    --color-destructive-hover: #DC2626;
+    --color-destructive-foreground: #FFFFFF;
+    --color-destructive-text: #B91C1C;
+    --color-destructive-bg: #FEF2F2;
+    --color-destructive-border: #FCA5A5;
+
+    --color-success: #10B981;
+    --color-success-hover: #059669;
+    --color-success-text: #047857;
+    --color-success-bg: #ECFDF5;
+    --color-success-border: #6EE7B7;
+
+    --color-warning: #F59E0B;
+    --color-warning-hover: #D97706;
+    --color-warning-text: #B45309;
+    --color-warning-bg: #FFFBEB;
+    --color-warning-border: #FCD34D;
+
+    --color-info: #3B82F6;
+    --color-info-hover: #2563EB;
+    --color-info-text: #1D4ED8;
+    --color-info-bg: #EFF6FF;
+    --color-info-border: #93C5FD;
+
+    --color-popover: #FFFFFF;
+    --color-popover-foreground: #111827;
+
+    --color-card: #FFFFFF;
+    --color-card-foreground: #111827;
+  }
+
+  input,
+  textarea,
+  select {
+    @apply border border-border rounded-md;
+  }
+  
+  input:focus,
+  textarea:focus,
+  select:focus,
+  button:focus {
+    @apply focus:ring-1 focus:ring-ring focus:outline-none;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+  }
+}

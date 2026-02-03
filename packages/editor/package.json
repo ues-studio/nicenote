@@ -1,0 +1,53 @@
+{
+  "name": "@nicenote/editor",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.tsx",
+    "./src/styles/*.css": "./src/styles/*.css"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "echo 'Editor package - no dev script needed'",
+    "lint": "eslint ."
+  },
+  "peerDependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "dependencies": {
+    "@nicenote/shared": "workspace:*",
+    "@nicenote/tokens": "workspace:*",
+    "@nicenote/ui": "workspace:*",
+    "@floating-ui/react": "^0.27.17",
+    "@radix-ui/react-dropdown-menu": "^2.1.16",
+    "@radix-ui/react-popover": "^1.1.15",
+    "@tiptap/core": "^3.18.0",
+    "@tiptap/extension-code-block-lowlight": "^3.18.0",
+    "@tiptap/extension-highlight": "^3.18.0",
+    "@tiptap/extension-horizontal-rule": "^3.18.0",
+    "@tiptap/extension-image": "^3.18.0",
+    "@tiptap/extension-list": "^3.18.0",
+    "@tiptap/extension-placeholder": "^3.18.0",
+    "@tiptap/extension-subscript": "^3.18.0",
+    "@tiptap/extension-superscript": "^3.18.0",
+    "@tiptap/extension-table-of-contents": "^3.18.0",
+    "@tiptap/extension-text-align": "^3.18.0",
+    "@tiptap/extension-typography": "^3.18.0",
+    "@tiptap/extensions": "^3.18.0",
+    "@tiptap/markdown": "^3.18.0",
+    "@tiptap/pm": "^3.18.0",
+    "@tiptap/react": "^3.18.0",
+    "@tiptap/starter-kit": "^3.18.0",
+    "lodash.throttle": "^4.1.1",
+    "lowlight": "^3.3.0",
+    "lucide-react": "^0.563.0",
+    "react-hotkeys-hook": "^5.2.3"
+  },
+  "devDependencies": {
+    "@types/lodash.throttle": "^4.1.9",
+    "@types/react": "^19.2.10",
+    "@types/react-dom": "^19.2.3"
+  }
+}
