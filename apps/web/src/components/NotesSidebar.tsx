@@ -41,16 +41,14 @@ const NoteListItem = memo(function NoteListItem({
       onClick={() => onSelect(note)}
       className={`group cursor-pointer rounded-md p-3 transition-all ${
         isActive
-          ? 'bg-accent text-accent-foreground shadow-sm'
+          ? 'bg-accent shadow-sm'
           : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
       }`}
     >
       <div className="flex items-center justify-between gap-2">
         <div className={`${WEB_ROW_WITH_ICON_CLASS} overflow-hidden`}>
-          <FileText
-            className={`${WEB_ICON_SM_CLASS} shrink-0 ${isActive ? 'text-primary' : 'opacity-50'}`}
-          />
-          <span className={`truncate font-medium ${isActive ? 'text-foreground' : ''}`}>
+          <FileText className={`${WEB_ICON_SM_CLASS} shrink-0 opacity-50`} />
+          <span className="truncate font-medium text-muted-foreground">
             {note.title || 'Untitled'}
           </span>
         </div>
