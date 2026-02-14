@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 
-import type { NoteUpdateInput } from '@nicenote/shared'
+import { debounce, type NoteUpdateInput } from '@nicenote/shared'
 
 interface UseDebouncedNoteSaveOptions {
   delayMs?: number
@@ -9,43 +9,50 @@ interface UseDebouncedNoteSaveOptions {
 
 type PendingSaveEntry = {
   updates: NoteUpdateInput
-  timer: ReturnType<typeof setTimeout>
+  debouncedSave: ReturnType<typeof debounce<() => void>>
 }
 
 export function useDebouncedNoteSave({ saveNote, delayMs = 1000 }: UseDebouncedNoteSaveOptions) {
   const pendingSavesRef = useRef<Map<string, PendingSaveEntry>>(new Map())
+  const saveNoteRef = useRef(saveNote)
+
+  useEffect(() => {
+    saveNoteRef.current = saveNote
+  }, [saveNote])
 
   const cancelPendingSave = useCallback((id: string) => {
     const pending = pendingSavesRef.current.get(id)
     if (!pending) return
-    clearTimeout(pending.timer)
+    pending.debouncedSave.cancel()
     pendingSavesRef.current.delete(id)
   }, [])
 
   const scheduleSave = useCallback(
     (id: string, updates: NoteUpdateInput) => {
-      const previous = pendingSavesRef.current.get(id)
-      const mergedUpdates = { ...(previous?.updates ?? {}), ...updates }
+      const pendingSaves = pendingSavesRef.current
+      let entry = pendingSaves.get(id)
 
-      if (previous) {
-        clearTimeout(previous.timer)
+      if (!entry) {
+        const debouncedSave = debounce(() => {
+          const pending = pendingSavesRef.current.get(id)
+          if (!pending) return
+
+          pendingSavesRef.current.delete(id)
+          if (Object.keys(pending.updates).length === 0) return
+          void saveNoteRef.current(id, pending.updates)
+        }, delayMs)
+
+        entry = {
+          updates: {},
+          debouncedSave,
+        }
+        pendingSaves.set(id, entry)
       }
 
-      const timer = setTimeout(() => {
-        const pending = pendingSavesRef.current.get(id)
-        if (!pending) return
-
-        pendingSavesRef.current.delete(id)
-        if (Object.keys(pending.updates).length === 0) return
-        void saveNote(id, pending.updates)
-      }, delayMs)
-
-      pendingSavesRef.current.set(id, {
-        updates: mergedUpdates,
-        timer,
-      })
+      entry.updates = { ...entry.updates, ...updates }
+      entry.debouncedSave()
     },
-    [delayMs, saveNote]
+    [delayMs]
   )
 
   useEffect(() => {
@@ -53,9 +60,9 @@ export function useDebouncedNoteSave({ saveNote, delayMs = 1000 }: UseDebouncedN
 
     return () => {
       for (const [id, pending] of pendingSaves.entries()) {
-        clearTimeout(pending.timer)
+        pending.debouncedSave.cancel()
         if (Object.keys(pending.updates).length === 0) continue
-        void saveNote(id, pending.updates)
+        void saveNoteRef.current(id, pending.updates)
       }
 
       pendingSaves.clear()
