@@ -1,16 +1,13 @@
-import { Fragment } from 'react'
+import { Fragment, type ReactNode } from 'react'
 
 import type { Editor } from '@tiptap/react'
 import {
   Bold,
-  ChevronDown,
   Code,
   Heading1,
   Heading2,
   Heading3,
   Italic,
-  Link2,
-  Link2Off,
   List,
   ListOrdered,
   type LucideIcon,
@@ -20,35 +17,21 @@ import {
   Strikethrough,
   Text,
 } from 'lucide-react'
-import type { ReactNode } from 'react'
 
-import {
-  Button,
-  cn,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  Separator,
-  Toolbar,
-  ToolbarGroup,
-} from '@nicenote/ui'
+import { Separator, Toolbar, ToolbarGroup } from '@nicenote/ui'
 
-import {
-  clearLink,
-  isNoteCommandId,
-  type NoteCommandId,
-  runNoteCommand,
-  setLinkHref,
-} from '../core/commands'
+import { isNoteCommandId, type NoteCommandId, runNoteCommand } from '../core/commands'
 import type { NoteEditorStateSnapshot } from '../core/state'
 import {
   HEADING_MENU_ITEMS,
   LIST_MENU_ITEMS,
   NOTE_TOOLBAR_GROUPS,
   type NoteToolbarItem,
-  type NoteToolbarItemId,
 } from '../preset-note/toolbar-config'
+
+import { ActionToolbarButton } from './action-toolbar-button'
+import { CommandDropdownMenu } from './command-dropdown-menu'
+import { LinkToolbarButton } from './link-toolbar-button'
 
 interface MinimalToolbarProps {
   editor: Editor | null
@@ -63,6 +46,10 @@ interface ToolbarItemRenderState {
   disabled: boolean
   onClick: () => void
   icon: ReactNode
+}
+
+type ActionToolbarItem = NoteToolbarItem & {
+  id: NoteCommandId | 'sourceMode'
 }
 
 const COMMAND_ICON_MAP: Record<NoteCommandId, LucideIcon> = {
@@ -102,8 +89,9 @@ const COMMAND_DISABLED_SELECTOR: Partial<
   redo: (snapshot) => !snapshot.canRedo,
 }
 
-const DROPDOWN_ITEM_CLASS =
-  'flex w-full min-w-40 items-center justify-between gap-3 rounded-md px-2 py-1.5 text-sm outline-none cursor-pointer data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground'
+function assertNever(value: string): never {
+  throw new Error(`Unhandled toolbar item id: ${value}`)
+}
 
 function getHeadingMenuIcon(snapshot: NoteEditorStateSnapshot): ReactNode {
   if (snapshot.nodes.heading3) return <Heading3 className="nn-editor-toolbar-icon" />
@@ -116,17 +104,12 @@ function getListMenuIcon(snapshot: NoteEditorStateSnapshot): ReactNode {
   return <List className="nn-editor-toolbar-icon" />
 }
 
-function getToolbarItemIcon(id: NoteToolbarItemId, linkActive: boolean): ReactNode {
-  if (isNoteCommandId(id)) {
-    const Icon = COMMAND_ICON_MAP[id]
-    return <Icon className="nn-editor-toolbar-icon" />
-  }
+function getCommandItemIcon(commandId: NoteCommandId): ReactNode {
+  const Icon = COMMAND_ICON_MAP[commandId]
+  return <Icon className="nn-editor-toolbar-icon" />
+}
 
-  if (id === 'link') {
-    const LinkIcon = linkActive ? Link2Off : Link2
-    return <LinkIcon className="nn-editor-toolbar-icon" />
-  }
-
+function getSourceModeIcon(): ReactNode {
   return <Text className="nn-editor-toolbar-icon" />
 }
 
@@ -145,10 +128,6 @@ function getCommandRenderState(
       runNoteCommand(editor, commandId)
     },
   }
-}
-
-function isCommandActive(commandId: NoteCommandId, snapshot: NoteEditorStateSnapshot): boolean {
-  return COMMAND_ACTIVE_SELECTOR[commandId]?.(snapshot) ?? false
 }
 
 function isHeadingMenuActive(snapshot: NoteEditorStateSnapshot): boolean {
@@ -172,8 +151,35 @@ function getListMenuLabel(snapshot: NoteEditorStateSnapshot): string {
   return '列表'
 }
 
+function resolveCommandDropdownOption(
+  option: NoteToolbarItem,
+  editor: Editor | null,
+  snapshot: NoteEditorStateSnapshot
+) {
+  if (!isNoteCommandId(option.id) || !editor) {
+    return null
+  }
+
+  const commandId: NoteCommandId = option.id
+  const OptionIcon = COMMAND_ICON_MAP[commandId]
+  const active = COMMAND_ACTIVE_SELECTOR[commandId]?.(snapshot) ?? false
+  const disabled = COMMAND_DISABLED_SELECTOR[commandId]?.(snapshot) ?? false
+
+  return {
+    key: commandId,
+    label: option.label,
+    disabled,
+    active,
+    icon: <OptionIcon className="nn-editor-toolbar-icon" />,
+    onSelect: () => {
+      runNoteCommand(editor, commandId)
+    },
+    ...(option.shortcut ? { shortcut: option.shortcut } : {}),
+  }
+}
+
 function getToolbarItemRenderState(
-  item: NoteToolbarItem,
+  item: ActionToolbarItem,
   options: {
     editor: Editor | null
     snapshot: NoteEditorStateSnapshot
@@ -183,30 +189,12 @@ function getToolbarItemRenderState(
 ): ToolbarItemRenderState {
   const { editor, snapshot, isSourceMode, onToggleSourceMode } = options
 
-  if (item.id === 'headingMenu') {
-    return {
-      active: isHeadingMenuActive(snapshot),
-      disabled: !editor || isSourceMode,
-      onClick: () => undefined,
-      icon: getHeadingMenuIcon(snapshot),
-    }
-  }
-
-  if (item.id === 'listMenu') {
-    return {
-      active: isListMenuActive(snapshot),
-      disabled: !editor || isSourceMode,
-      onClick: () => undefined,
-      icon: getListMenuIcon(snapshot),
-    }
-  }
-
   if (item.id === 'sourceMode') {
     return {
       active: isSourceMode,
       disabled: !editor,
       onClick: onToggleSourceMode,
-      icon: getToolbarItemIcon(item.id, snapshot.marks.link),
+      icon: getSourceModeIcon(),
     }
   }
 
@@ -215,40 +203,7 @@ function getToolbarItemRenderState(
       active: false,
       disabled: true,
       onClick: () => undefined,
-      icon: getToolbarItemIcon(item.id, snapshot.marks.link),
-    }
-  }
-
-  if (item.id === 'link') {
-    return {
-      active: snapshot.marks.link,
-      disabled: false,
-      onClick: () => {
-        if (snapshot.marks.link) {
-          clearLink(editor)
-          return
-        }
-
-        const currentLink = editor.getAttributes('link').href
-        const rawHref = window.prompt('输入链接地址', currentLink ?? 'https://')
-        if (rawHref === null) return
-        const nextHref = rawHref.trim()
-        if (!nextHref) {
-          clearLink(editor)
-          return
-        }
-        setLinkHref(editor, nextHref)
-      },
-      icon: getToolbarItemIcon(item.id, snapshot.marks.link),
-    }
-  }
-
-  if (!isNoteCommandId(item.id)) {
-    return {
-      active: false,
-      disabled: true,
-      onClick: () => undefined,
-      icon: getToolbarItemIcon(item.id, snapshot.marks.link),
+      icon: getCommandItemIcon(item.id),
     }
   }
 
@@ -258,78 +213,8 @@ function getToolbarItemRenderState(
     active,
     disabled,
     onClick,
-    icon: getToolbarItemIcon(item.id, snapshot.marks.link),
+    icon: getCommandItemIcon(item.id),
   }
-}
-
-function CommandDropdownMenu({
-  triggerLabel,
-  triggerIcon,
-  triggerActive,
-  triggerDisabled,
-  isMobile,
-  editor,
-  snapshot,
-  options,
-}: {
-  triggerLabel: string
-  triggerIcon: ReactNode
-  triggerActive: boolean
-  triggerDisabled: boolean
-  isMobile: boolean
-  editor: Editor | null
-  snapshot: NoteEditorStateSnapshot
-  options: readonly NoteToolbarItem[]
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          aria-label={triggerLabel}
-          data-style="ghost"
-          data-active-state={triggerActive ? 'on' : 'off'}
-          disabled={triggerDisabled}
-          showTooltip={false}
-          title={!isMobile ? triggerLabel : undefined}
-        >
-          {triggerIcon}
-          <ChevronDown className="nn-editor-toolbar-icon opacity-70" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent portal sideOffset={6} className="z-70 p-1">
-        {options.map((option) => {
-          if (!isNoteCommandId(option.id) || !editor) {
-            return null
-          }
-
-          const commandId: NoteCommandId = option.id
-          const OptionIcon = COMMAND_ICON_MAP[commandId]
-          const isActive = isCommandActive(commandId, snapshot)
-          const isDisabled = COMMAND_DISABLED_SELECTOR[commandId]?.(snapshot) ?? false
-
-          return (
-            <DropdownMenuItem
-              key={commandId}
-              disabled={isDisabled}
-              onSelect={() => {
-                runNoteCommand(editor, commandId)
-              }}
-              className={cn(DROPDOWN_ITEM_CLASS, isActive && 'bg-accent text-accent-foreground')}
-            >
-              <span className="flex items-center gap-2">
-                <OptionIcon className="nn-editor-toolbar-icon" />
-                <span>{option.label}</span>
-              </span>
-              {option.shortcut ? (
-                <span className="text-meta text-muted-foreground">{option.shortcut}</span>
-              ) : null}
-            </DropdownMenuItem>
-          )
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
 }
 
 export function MinimalToolbar({
@@ -345,61 +230,80 @@ export function MinimalToolbar({
         <Fragment key={groupIndex}>
           <ToolbarGroup>
             {group.map((item) => {
-              const { active, disabled, onClick, icon } = getToolbarItemRenderState(item, {
-                editor,
-                snapshot,
-                isSourceMode,
-                onToggleSourceMode,
-              })
+              switch (item.id) {
+                case 'headingMenu':
+                  return (
+                    <CommandDropdownMenu
+                      key={item.id}
+                      triggerLabel={getHeadingMenuLabel(snapshot)}
+                      triggerIcon={getHeadingMenuIcon(snapshot)}
+                      triggerActive={isHeadingMenuActive(snapshot)}
+                      triggerDisabled={!editor || isSourceMode}
+                      isMobile={isMobile}
+                      options={HEADING_MENU_ITEMS}
+                      resolveOption={(option) =>
+                        resolveCommandDropdownOption(option, editor, snapshot)
+                      }
+                    />
+                  )
+                case 'listMenu':
+                  return (
+                    <CommandDropdownMenu
+                      key={item.id}
+                      triggerLabel={getListMenuLabel(snapshot)}
+                      triggerIcon={getListMenuIcon(snapshot)}
+                      triggerActive={isListMenuActive(snapshot)}
+                      triggerDisabled={!editor || isSourceMode}
+                      isMobile={isMobile}
+                      options={LIST_MENU_ITEMS}
+                      resolveOption={(option) =>
+                        resolveCommandDropdownOption(option, editor, snapshot)
+                      }
+                    />
+                  )
+                case 'link':
+                  return (
+                    <LinkToolbarButton
+                      key={item.id}
+                      editor={editor}
+                      snapshot={snapshot}
+                      isSourceMode={isSourceMode}
+                      isMobile={isMobile}
+                      label={item.label}
+                      {...(item.shortcut ? { shortcut: item.shortcut } : {})}
+                    />
+                  )
+                default: {
+                  const isActionItem = item.id === 'sourceMode' || isNoteCommandId(item.id)
 
-              if (item.id === 'headingMenu') {
-                return (
-                  <CommandDropdownMenu
-                    key={item.id}
-                    triggerLabel={getHeadingMenuLabel(snapshot)}
-                    triggerIcon={icon}
-                    triggerActive={active}
-                    triggerDisabled={disabled}
-                    isMobile={isMobile}
-                    editor={editor}
-                    snapshot={snapshot}
-                    options={HEADING_MENU_ITEMS}
-                  />
-                )
+                  if (!isActionItem) {
+                    return assertNever(item.id)
+                  }
+
+                  const { active, disabled, onClick, icon } = getToolbarItemRenderState(
+                    item as ActionToolbarItem,
+                    {
+                      editor,
+                      snapshot,
+                      isSourceMode,
+                      onToggleSourceMode,
+                    }
+                  )
+
+                  return (
+                    <ActionToolbarButton
+                      id={item.id}
+                      label={item.label}
+                      isMobile={isMobile}
+                      active={active}
+                      disabled={disabled}
+                      onClick={onClick}
+                      icon={icon}
+                      {...(item.shortcut ? { shortcut: item.shortcut } : {})}
+                    />
+                  )
+                }
               }
-
-              if (item.id === 'listMenu') {
-                return (
-                  <CommandDropdownMenu
-                    key={item.id}
-                    triggerLabel={getListMenuLabel(snapshot)}
-                    triggerIcon={icon}
-                    triggerActive={active}
-                    triggerDisabled={disabled}
-                    isMobile={isMobile}
-                    editor={editor}
-                    snapshot={snapshot}
-                    options={LIST_MENU_ITEMS}
-                  />
-                )
-              }
-
-              return (
-                <Button
-                  key={item.id}
-                  type="button"
-                  onClick={onClick}
-                  aria-label={item.label}
-                  data-style="ghost"
-                  data-active-state={active ? 'on' : 'off'}
-                  disabled={disabled}
-                  showTooltip={!isMobile}
-                  {...(!isMobile ? { tooltip: item.label } : {})}
-                  {...(item.shortcut ? { shortcutKeys: item.shortcut } : {})}
-                >
-                  {icon}
-                </Button>
-              )
             })}
           </ToolbarGroup>
           {groupIndex < NOTE_TOOLBAR_GROUPS.length - 1 ? <Separator /> : null}
