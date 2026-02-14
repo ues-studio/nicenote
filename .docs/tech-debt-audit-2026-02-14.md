@@ -68,30 +68,40 @@
   - 以 `lint + build + tsc --noEmit` 作为合入门禁，失败即回退本批改动
 
 #### 5) 编辑器链接输入使用 `window.prompt`
-- 现状：toolbar 里通过阻塞式 prompt 输入链接
-- 风险：体验与可测试性差，难扩展校验
-- 建议：替换为 Popover/Modal + 输入校验
+- 状态：✅ 已完成（2026-02-14）
+- 已实施：
+  - 链接输入改为非阻塞 Popover 表单：`packages/editor/src/web/link-toolbar-button.tsx`
+  - 链接校验下沉到 core：`packages/editor/src/core/link.ts`
+  - 工具栏组件已收敛拆分：`packages/editor/src/web/toolbar.tsx`、`packages/editor/src/web/command-dropdown-menu.tsx`、`packages/editor/src/web/action-toolbar-button.tsx`
+- 结果：移除阻塞式输入，提升可测试性与可扩展性（协议/格式校验集中管理）
 
 #### 6) 主题/样式一致性问题
-- `--color-primary` 与 `--color-primary-hover` 相同，hover 无反馈
-- editor `pre` 代码块存在硬编码色值，暗色主题适配不足
-- 建议：统一走 token/CSS 变量，消除硬编码
+- 状态：✅ 已完成（2026-02-14）
+- 已实施：
+  - 调整 token：`primaryHover` 与 `secondaryHover` 改为独立层级色值，恢复 hover 反馈（无兼容层）
+  - editor 代码块：`pre` 配色移除硬编码，直接改为全局 `--color-active` / `--color-foreground`
+  - editor token 收敛：删除 `packages/editor/src/styles/tokens.css` 中间映射层，`editor.css` 直接依赖全局 `--color-*` / `--font-*` 变量
+- 结果：hover 交互可感知；editor 浅/深色主题一致；主题色来源收敛且无重复覆盖
 
 ---
 
 ### P2（中期治理）
 
 #### 7) Token 与样式生成链路重复来源
-- 现状：`generate-css.ts`、`tailwind.config.ts`、editor tokens.css 有重复映射
-- 风险：配置漂移
-- 建议：建设单一生成源（tokens -> css variables + tailwind mapping）
+- 状态：✅ 已完成（2026-02-14）
+- 已实施：
+  - 删除 `packages/editor/src/styles/tokens.css` 中间映射层，editor 样式直接依赖全局 `--color-*` / `--font-*`
+  - `apps/web/tailwind.config.ts` 移除 colors 直连 token 的重复映射，仅保留必要配置
+  - border radius 扩展改为引用 CSS 变量（`--radius-sm`），避免与 token 数值双写
+- 结果：主题数值单一来源收敛到 `packages/tokens` + `generate-css.ts`，降低配置漂移风险
 
 #### 8) Schema 语义可加强
-- `noteUpdateSchema` 目前等同 create schema
-- 时间字段仅 `z.string()`，缺少 datetime 约束
-- 建议：
-  - update 独立定义（支持 partial + 至少一个字段变更）
-  - 时间字段使用 datetime 校验
+- 状态：✅ 已完成（2026-02-14）
+- 已实施：
+  - `noteUpdateSchema` 改为独立定义：`title/content` 可选，但强制至少一个字段存在
+  - `createdAt/updatedAt` 从 `z.string()` 收敛为 datetime 约束（ISO8601 with offset）
+  - API `update` 写入逻辑收敛为仅更新传入字段 + `updatedAt`，去除 `...body` 扩散
+- 结果：update 语义与校验一致，时间字段约束明确，减少空更新/脏写入风险
 
 #### 9) 交互与布局增强点
 - sidebar resize 无 touch/pointer 完整支持

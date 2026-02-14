@@ -1,12 +1,14 @@
 import { z } from 'zod'
 
+const isoDateTimeSchema = z.string().datetime({ offset: true })
+
 export const noteSelectSchema = z
   .object({
     id: z.string(),
     title: z.string(),
     content: z.string().nullable(),
-    createdAt: z.string(),
-    updatedAt: z.string(),
+    createdAt: isoDateTimeSchema,
+    updatedAt: isoDateTimeSchema,
   })
   .strict()
 
@@ -15,8 +17,8 @@ export const noteInsertSchema = z
     id: z.string().optional(),
     title: z.string().optional(),
     content: z.string().nullable().optional(),
-    createdAt: z.string().optional(),
-    updatedAt: z.string().optional(),
+    createdAt: isoDateTimeSchema.optional(),
+    updatedAt: isoDateTimeSchema.optional(),
   })
   .strict()
 
@@ -25,7 +27,15 @@ export const noteCreateSchema = noteInsertSchema.pick({
   content: true,
 })
 
-export const noteUpdateSchema = noteCreateSchema
+export const noteUpdateSchema = z
+  .object({
+    title: z.string().optional(),
+    content: z.string().nullable().optional(),
+  })
+  .strict()
+  .refine((input) => input.title !== undefined || input.content !== undefined, {
+    message: 'At least one field must be provided for update',
+  })
 
 export const noteIdParamSchema = z
   .object({

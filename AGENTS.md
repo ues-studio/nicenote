@@ -107,6 +107,7 @@ Types: Note, CreateNoteRequest, UpdateNoteRequest, ApiResponse.
 - Functional components with hooks, forwardRef for ref forwarding
 - CSS variables for themeable values via design tokens
 - Mobile-first responsive design (breakpoints: sm=640, md=768, lg=1024, xl=1280)
+- Editor link input must use non-blocking UI (Popover/Modal + validation); do not use `window.prompt`
 
 ## Deployment
 

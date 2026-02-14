@@ -42,9 +42,17 @@ export function createNoteService(bindings: NoteServiceBindings): NoteContractSe
       return db.insert(notes).values(values).returning().get()
     },
     update: async (id, body) => {
-      const updates: Pick<DrizzleNoteInsert, 'title' | 'content' | 'updatedAt'> = {
-        ...body,
+      const updates: Pick<DrizzleNoteInsert, 'updatedAt'> &
+        Partial<Pick<DrizzleNoteInsert, 'title' | 'content'>> = {
         updatedAt: new Date().toISOString(),
+      }
+
+      if (body.title !== undefined) {
+        updates.title = body.title
+      }
+
+      if (body.content !== undefined) {
+        updates.content = body.content
       }
 
       const result = await db.update(notes).set(updates).where(eq(notes.id, id)).returning().get()

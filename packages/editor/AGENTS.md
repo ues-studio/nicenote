@@ -21,16 +21,24 @@
 - `src/web/editor-content.tsx`
   - 视图切换：富文本 (`EditorContent`) / 源码 (`textarea`)。
 - `src/web/toolbar.tsx`
-  - 最小工具栏与下拉菜单，命令分发到 `core/commands.ts`。
+  - 工具栏装配层：组合 heading/list 下拉、链接按钮、动作按钮。
+- `src/web/command-dropdown-menu.tsx`
+  - 命令下拉菜单 UI（通过 `resolveOption` 注入命令状态与行为）。
+- `src/web/link-toolbar-button.tsx`
+  - 链接按钮交互：Popover 表单输入、校验提示、设置/清除链接。
+- `src/web/action-toolbar-button.tsx`
+  - 普通动作按钮（命令项与 source mode）的通用渲染。
 - `src/core/serialization.ts`
   - Markdown 读写与变更判断：`readEditorMarkdown` / `writeEditorMarkdown` / `hasEditorMarkdownChanged`。
 - `src/core/state.ts`
   - 工具栏状态快照（undo/redo、marks、nodes）。
 - `src/core/commands.ts`
   - 统一命令 ID 与执行逻辑，含链接设置/清除。
+- `src/core/link.ts`
+  - 链接输入校验逻辑（格式、长度、协议约束）。
 - `src/preset-note/*`
   - 注记场景 preset：行为策略、最小扩展、快捷键、工具栏配置。
-- `src/styles/editor.css`, `src/styles/tokens.css`
+- `src/styles/editor.css`
   - 编辑器样式与 token 映射。
 
 ## 3) 必须遵守的修改原则
@@ -38,8 +46,9 @@
 1. **Markdown 单一事实来源**：对外值始终是 markdown，避免引入第二套主数据格式。
 2. **行为策略集中**：默认行为改动优先落在 `preset-note/behavior-policy.ts`，不要散落 magic number / magic string。
 3. **命令统一入口**：新增工具栏动作应先扩展 `core/commands.ts` 和 `NoteCommandId`，再接入 UI。
-4. **类型先行**：保持严格类型，不绕过 `strict`（禁止 `any`、禁止弱化公共 props 类型）。
-5. **最小改动**：仅修改 editor 包职责内代码，不把 `apps/web` 业务逻辑耦合进来。
+4. **链接交互独立**：链接输入与校验收敛在 `web/link-toolbar-button.tsx` + `core/link.ts`，不要回退到 `window.prompt`。
+5. **类型先行**：保持严格类型，不绕过 `strict`（禁止 `any`、禁止弱化公共 props 类型）。
+6. **最小改动**：仅修改 editor 包职责内代码，不把 `apps/web` 业务逻辑耦合进来。
 
 ## 4) 扩展与工具栏约定
 
@@ -57,6 +66,13 @@
     - `state.ts` 中 active/disabled 判定所需状态
     - `preset-note/toolbar-config.ts` 按需配置展示
 
+## 4.1) 链接输入约定
+
+- 链接输入必须使用非阻塞 UI（当前实现为 Popover 表单），禁止 `window.prompt`。
+- 链接校验统一走 `core/link.ts#getLinkValidationError()`。
+- 当前允许协议：`http` / `https` / `mailto` / `tel`。
+- 输入非法时在 UI 内给出错误提示，不执行 `setLinkHref()`。
+
 ## 5) Source Mode 约定
 
 - 切换快捷键由 `isToggleSourceModeShortcut()` 定义（当前为 `Mod+Shift+M`）。
@@ -65,11 +81,10 @@
 
 ## 6) 样式与主题约定
 
-- 优先使用 `tokens.css` 中的 CSS 变量，不新增硬编码主题色。
-- 保持 `editor.css` 中 `nn-editor-*` 命名空间，避免污染宿主页面样式。
+- 优先使用全局 `--color-*` / `--font-*` token 变量，不新增硬编码主题色。
+- 保持 `editor.css` 中 `nn-editor-*` class 命名空间，避免污染宿主页面样式。
 - 对外样式入口通过 `package.json` exports：
   - `./styles/editor.css`
-  - `./styles/tokens.css`
 
 ## 7) 导出与兼容性
 
@@ -106,7 +121,7 @@ pnpm --filter web build
 - 是否保持 markdown 读写链路一致（value -> editor -> onChange）？
 - 是否同步更新了命令定义、工具栏配置、状态快照映射？
 - 是否新增/改动了公共导出并在 `src/index.ts` 聚合？
-- 是否遵守了样式 token 与 `nn-editor-*` 命名空间约束？
+- 是否遵守了全局样式 token 与 `nn-editor-*` class 命名空间约束？
 
 ## 11) 跨包联动注意事项（apps/web）
 

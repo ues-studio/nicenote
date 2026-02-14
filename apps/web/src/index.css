@@ -72,7 +72,7 @@
 
   /* Primary colors */
   --color-primary: #1d4ed8;
-  --color-primary-hover: #1d4ed8;
+  --color-primary-hover: #3b82f6;
   --color-primary-active: #1e3a8a;
   --color-primary-focus: #3b82f6;
   --color-primary-disabled: #93c5fd;
@@ -82,7 +82,7 @@
 
   /* Secondary colors */
   --color-secondary: #6d28d9;
-  --color-secondary-hover: #6d28d9;
+  --color-secondary-hover: #8b5cf6;
   --color-secondary-active: #4c1d95;
   --color-secondary-disabled: #c4b5fd;
   --color-secondary-text: #6d28d9;

@@ -21,8 +21,7 @@
   },
   "exports": {
     ".": "./src/index.ts",
-    "./styles/editor.css": "./src/styles/editor.css",
-    "./styles/tokens.css": "./src/styles/tokens.css"
+    "./styles/editor.css": "./src/styles/editor.css"
   },
   "peerDependencies": {
     "react": "^19.2.0",

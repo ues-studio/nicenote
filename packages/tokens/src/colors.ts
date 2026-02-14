@@ -78,7 +78,7 @@ const purple = {
 export const colors = {
   // --- 主色 ---
   primary: blue[700],
-  primaryHover: blue[700],
+  primaryHover: blue[500],
   primaryActive: blue[900],
   primaryFocus: blue[500],
   primaryDisabled: blue[300],
@@ -87,7 +87,7 @@ export const colors = {
 
   // --- 副色 ---
   secondary: purple[700],
-  secondaryHover: purple[700],
+  secondaryHover: purple[500],
   secondaryActive: purple[900],
   secondaryDisabled: purple[300],
   secondaryText: purple[700],
