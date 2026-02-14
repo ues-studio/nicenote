@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef } from 'react'
 
-import type { Note } from '../store/useNoteStore'
+import type { NoteUpdateInput } from '@nicenote/contract'
 
 interface UseDebouncedNoteSaveOptions {
   delayMs?: number
-  saveNote: (id: string, updates: Partial<Note>) => Promise<void>
+  saveNote: (id: string, updates: NoteUpdateInput) => Promise<void>
 }
 
 type PendingSaveEntry = {
-  updates: Partial<Note>
+  updates: NoteUpdateInput
   timer: ReturnType<typeof setTimeout>
 }
 
@@ -23,7 +23,7 @@ export function useDebouncedNoteSave({ saveNote, delayMs = 1000 }: UseDebouncedN
   }, [])
 
   const scheduleSave = useCallback(
-    (id: string, updates: Partial<Note>) => {
+    (id: string, updates: NoteUpdateInput) => {
       const previous = pendingSavesRef.current.get(id)
       const mergedUpdates = { ...(previous?.updates ?? {}), ...updates }
 

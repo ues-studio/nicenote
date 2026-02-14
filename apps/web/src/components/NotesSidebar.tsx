@@ -4,9 +4,10 @@ import { formatDistanceToNow } from 'date-fns'
 import { ArrowRightFromLine, FileText, Plus, Search, Trash2 } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 
+import type { NoteSelect } from '@nicenote/contract'
+
 import { useMinuteTicker } from '../hooks/useMinuteTicker'
 import { WEB_ICON_MD_CLASS, WEB_ICON_SM_CLASS, WEB_ROW_WITH_ICON_CLASS } from '../lib/class-names'
-import type { Note } from '../store/useNoteStore'
 import { useNoteStore } from '../store/useNoteStore'
 
 import { ThemeToggle } from './ThemeToggle'
@@ -23,9 +24,9 @@ interface NotesSidebarProps {
 }
 
 interface NoteListItemProps {
-  note: Note
+  note: NoteSelect
   isActive: boolean
-  onSelect: (note: Note) => void
+  onSelect: (note: NoteSelect) => void
   onDelete: (id: string) => void
 }
 
@@ -120,7 +121,7 @@ export function NotesSidebar({
       .filter(
         (note) =>
           note.title.toLowerCase().includes(normalizedSearch) ||
-          note.content.toLowerCase().includes(normalizedSearch)
+          (note.content ?? '').toLowerCase().includes(normalizedSearch)
       )
   }, [search, notes])
 

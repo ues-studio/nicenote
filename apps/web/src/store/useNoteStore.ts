@@ -1,24 +1,18 @@
 import { create } from 'zustand'
 
+import type { NoteSelect, NoteUpdateInput } from '@nicenote/contract'
+
 import { api } from '../lib/api'
 
-export interface Note {
-  id: string
-  title: string
-  content: string
-  createdAt: string
-  updatedAt: string
-}
-
 interface NoteStore {
-  notes: Note[]
-  currentNote: Note | null
+  notes: NoteSelect[]
+  currentNote: NoteSelect | null
   isLoading: boolean
   fetchNotes: () => Promise<void>
-  selectNote: (note: Note | null) => void
+  selectNote: (note: NoteSelect | null) => void
   createNote: () => Promise<void>
-  updateNoteLocal: (id: string, updates: Partial<Note>) => void
-  saveNote: (id: string, updates: Partial<Note>) => Promise<void>
+  updateNoteLocal: (id: string, updates: NoteUpdateInput) => void
+  saveNote: (id: string, updates: NoteUpdateInput) => Promise<void>
   deleteNote: (id: string) => Promise<void>
 }
 
@@ -26,7 +20,7 @@ function toIsoNow() {
   return new Date().toISOString()
 }
 
-function normalizeNote(raw: unknown): Note | null {
+function normalizeNote(raw: unknown): NoteSelect | null {
   if (typeof raw !== 'object' || raw === null) return null
 
   const data = raw as Record<string, unknown>
@@ -45,10 +39,10 @@ function normalizeNote(raw: unknown): Note | null {
   }
 }
 
-function normalizeNoteList(raw: unknown): Note[] {
+function normalizeNoteList(raw: unknown): NoteSelect[] {
   if (!Array.isArray(raw)) return []
 
-  return raw.reduce<Note[]>((notes, item) => {
+  return raw.reduce<NoteSelect[]>((notes, item) => {
     const normalized = normalizeNote(item)
     if (normalized) {
       notes.push(normalized)

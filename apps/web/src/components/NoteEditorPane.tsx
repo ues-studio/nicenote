@@ -2,17 +2,17 @@ import { formatDistanceToNow } from 'date-fns'
 import { FileText, Plus } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 
+import type { NoteUpdateInput } from '@nicenote/contract'
 import { NicenoteEditor } from '@nicenote/editor'
 
 import { useMinuteTicker } from '../hooks/useMinuteTicker'
 import { WEB_ICON_SM_CLASS } from '../lib/class-names'
-import type { Note } from '../store/useNoteStore'
 import { useNoteStore } from '../store/useNoteStore'
 
 interface NoteEditorPaneProps {
   isSidebarOpen: boolean
   sidebarWidth: number
-  scheduleSave: (id: string, updates: Partial<Note>) => void
+  scheduleSave: (id: string, updates: NoteUpdateInput) => void
 }
 
 export function NoteEditorPane({ isSidebarOpen, sidebarWidth, scheduleSave }: NoteEditorPaneProps) {
