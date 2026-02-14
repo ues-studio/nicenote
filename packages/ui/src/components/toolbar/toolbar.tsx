@@ -1,6 +1,5 @@
 import { forwardRef, useCallback, useEffect, useRef, useState } from 'react'
 
-import { useMenuNavigation } from '../../hooks/tiptap/use-menu-navigation'
 import { useComposedRef } from '../../hooks/use-composed-ref'
 import { cn } from '../../lib/utils'
 
@@ -12,6 +11,7 @@ interface ToolbarProps extends BaseProps {
 
 const useToolbarNavigation = (toolbarRef: React.RefObject<HTMLDivElement | null>) => {
   const [items, setItems] = useState<HTMLElement[]>([])
+  const [selectedIndex, setSelectedIndex] = useState<number>(-1)
 
   const collectItems = useCallback(() => {
     if (!toolbarRef.current) return []
@@ -35,13 +35,65 @@ const useToolbarNavigation = (toolbarRef: React.RefObject<HTMLDivElement | null>
     return () => observer.disconnect()
   }, [collectItems, toolbarRef])
 
-  const { selectedIndex } = useMenuNavigation<HTMLElement>({
-    containerRef: toolbarRef,
-    items,
-    orientation: 'horizontal',
-    onSelect: (el) => el.click(),
-    autoSelectFirstItem: false,
-  })
+  useEffect(() => {
+    const toolbar = toolbarRef.current
+    if (!toolbar) return
+
+    const handleKeyboardNavigation = (event: KeyboardEvent) => {
+      if (!items.length) return
+
+      const moveNext = () =>
+        setSelectedIndex((currentIndex) => {
+          if (currentIndex === -1) return 0
+          return (currentIndex + 1) % items.length
+        })
+
+      const movePrev = () =>
+        setSelectedIndex((currentIndex) => {
+          if (currentIndex === -1) return items.length - 1
+          return (currentIndex - 1 + items.length) % items.length
+        })
+
+      switch (event.key) {
+        case 'ArrowLeft':
+          event.preventDefault()
+          movePrev()
+          break
+        case 'ArrowRight':
+        case 'Tab':
+          event.preventDefault()
+          if (event.key === 'Tab' && event.shiftKey) {
+            movePrev()
+          } else {
+            moveNext()
+          }
+          break
+        case 'Home':
+          event.preventDefault()
+          setSelectedIndex(0)
+          break
+        case 'End':
+          event.preventDefault()
+          setSelectedIndex(items.length - 1)
+          break
+        case 'Enter':
+          if (event.isComposing) return
+          event.preventDefault()
+          if (selectedIndex !== -1 && items[selectedIndex]) {
+            items[selectedIndex].click()
+          }
+          break
+        default:
+          break
+      }
+    }
+
+    toolbar.addEventListener('keydown', handleKeyboardNavigation, true)
+
+    return () => {
+      toolbar.removeEventListener('keydown', handleKeyboardNavigation, true)
+    }
+  }, [items, selectedIndex, toolbarRef])
 
   useEffect(() => {
     const toolbar = toolbarRef.current
