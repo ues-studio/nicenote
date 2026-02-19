@@ -26,6 +26,10 @@ on:
       - 'package.json'
       - 'pnpm-lock.yaml'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   quality:
     runs-on: ubuntu-latest
@@ -53,8 +57,19 @@ jobs:
       - name: Type check
         run: pnpm typecheck
 
-      - name: Test
-        run: pnpm test
+      - name: Test with coverage
+        run: pnpm test -- --coverage
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: coverage-reports
+          path: |
+            packages/editor/coverage/
+            apps/web/coverage/
+            apps/api/coverage/
+          retention-days: 14
 
       - name: Build
         run: pnpm build
@@ -63,6 +78,7 @@ jobs:
     if: github.event_name == 'push'
     needs: quality
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -99,6 +115,7 @@ jobs:
     if: github.event_name == 'push'
     needs: quality
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -117,13 +134,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Validate VITE_API_URL
-        run: |
-          if [ -z "${{ vars.VITE_API_URL }}" ]; then
-            echo "::error::VITE_API_URL is not set. Configure it in repository variables (Settings > Secrets and variables > Actions > Variables)."
-            exit 1
-          fi
-
       - name: Build Web
         working-directory: apps/web
         env:
@@ -135,3 +145,116 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: pnpm --filter api exec -- wrangler pages deploy apps/web/dist --project-name nicenote-web
+
+  deploy-api-staging:
+    if: github.event_name == 'pull_request'
+    needs: quality
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4
+        with:
+          version: 10.28.2
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Run staging database migrations
+        working-directory: apps/api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm db:migrate:staging
+
+      - name: Deploy API (staging)
+        working-directory: apps/api
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm run deploy:staging
+
+  deploy-web-staging:
+    if: github.event_name == 'pull_request'
+    needs: quality
+    runs-on: ubuntu-latest
+    environment: staging
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4
+        with:
+          version: 10.28.2
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build Web (staging)
+        working-directory: apps/web
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+        run: pnpm build
+
+      - name: Deploy Web preview (Cloudflare Pages)
+        id: pages-deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          DEPLOY_OUTPUT=$(pnpm --filter api exec -- wrangler pages deploy apps/web/dist --project-name nicenote-web --branch "${{ github.head_ref }}" 2>&1)
+          echo "$DEPLOY_OUTPUT"
+          PREVIEW_URL=$(echo "$DEPLOY_OUTPUT" | grep -oP 'https://[a-z0-9-]+\.nicenote-web\.pages\.dev')
+          echo "preview_url=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Comment preview URL on PR
+        if: steps.pages-deploy.outputs.preview_url
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+        with:
+          script: |
+            const previewUrl = '${{ steps.pages-deploy.outputs.preview_url }}'
+            const body = `### 🔗 Preview Deployment\n\n**Web:** ${previewUrl}\n**API:** ${{ vars.VITE_API_URL }}\n\n_Updated for commit ${{ github.event.pull_request.head.sha }}_`
+
+            // Find existing comment from this workflow
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            })
+            const botComment = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('### 🔗 Preview Deployment')
+            )
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body,
+              })
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              })
+            }

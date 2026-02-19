@@ -4,6 +4,7 @@ import type { Editor } from '@tiptap/react'
 import {
   Bold,
   Code,
+  CodeXml,
   Heading1,
   Heading2,
   Heading3,
@@ -15,7 +16,6 @@ import {
   Redo2,
   RotateCcw,
   Strikethrough,
-  Text,
 } from 'lucide-react'
 
 import { Separator, Toolbar, ToolbarGroup } from '@nicenote/ui'
@@ -113,7 +113,7 @@ function getCommandItemIcon(commandId: NoteCommandId): ReactNode {
 }
 
 function getSourceModeIcon(): ReactNode {
-  return <Text className="nn-editor-toolbar-icon" />
+  return <CodeXml className="nn-editor-toolbar-icon" />
 }
 
 function getCommandRenderState(

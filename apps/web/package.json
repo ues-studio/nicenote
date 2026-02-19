@@ -4,6 +4,7 @@
   "dependencies": {
     "@nicenote/editor": "workspace:*",
     "@nicenote/shared": "workspace:*",
+    "@nicenote/ui": "workspace:*",
     "api": "workspace:*",
     "date-fns": "^4.1.0",
     "i18next": "^25.8.11",

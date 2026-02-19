@@ -19,10 +19,15 @@ const ALLOWED_ORIGINS = [
   'https://nicenote.pages.dev',
 ]
 
+function isAllowedOrigin(origin: string): boolean {
+  if (ALLOWED_ORIGINS.includes(origin)) return true
+  return /^https:\/\/[a-z0-9-]+\.nicenote-web\.pages\.dev$/.test(origin)
+}
+
 app.use(
   '*',
   cors({
-    origin: (origin) => (ALLOWED_ORIGINS.includes(origin) ? origin : null),
+    origin: (origin) => (isAllowedOrigin(origin) ? origin : null),
     allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization', 'Accept-Language'],
     exposeHeaders: [
