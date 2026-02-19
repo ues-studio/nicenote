@@ -2,10 +2,11 @@
   "name": "web",
   "version": "0.0.0",
   "dependencies": {
-    "api": "workspace:*",
     "@nicenote/editor": "workspace:*",
     "@nicenote/shared": "workspace:*",
     "@nicenote/tokens": "workspace:*",
+    "@radix-ui/react-alert-dialog": "^1.1.15",
+    "api": "workspace:*",
     "date-fns": "^4.1.0",
     "hono": "^4.11.9",
     "lucide-react": "^0.563.0",

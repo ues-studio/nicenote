@@ -12,10 +12,16 @@ app.use('*', (c, next) => {
   if (c.req.path === '/health') return next()
   return logger()(c, next)
 })
+const ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'https://nicenote.app',
+  'https://nicenote.pages.dev',
+]
+
 app.use(
   '*',
   cors({
-    origin: '*',
+    origin: (origin) => (ALLOWED_ORIGINS.includes(origin) ? origin : ''),
     allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
     exposeHeaders: ['Content-Length'],
@@ -26,13 +32,7 @@ app.use(
 // 全局错误处理
 app.onError((err, c) => {
   console.error(`Error: ${err.message}`)
-  return c.json(
-    {
-      error: 'Internal Server Error',
-      message: err.message,
-    },
-    500
-  )
+  return c.json({ error: 'Internal Server Error' }, 500)
 })
 
 app.get('/', (c) => c.json({ status: 'ok', message: 'Nicenote API is running' }))

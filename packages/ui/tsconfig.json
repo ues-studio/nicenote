@@ -8,6 +8,8 @@
     "moduleDetection": "force",
     "allowImportingTsExtensions": false,
     "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,

@@ -22,7 +22,7 @@ packages/
 - **Frontend**: React 19, Vite 7, TailwindCSS v4, Zustand v5
 - **Backend**: Hono v4, Cloudflare Workers, D1 (SQLite), Drizzle ORM
 - **Validation**: Zod v4 + @hono/zod-validator
-- **Editor**: Tiptap v3 (ProseMirror), lowlight for code highlighting
+- **Editor**: Tiptap v3 (ProseMirror)
 - **UI Primitives**: Radix UI, Floating UI
 - **Linting**: ESLint 9 (flat config) + Prettier (single quotes, no semicolons, 100 width)
 - **Git Hooks**: Husky + lint-staged
@@ -59,7 +59,7 @@ pnpm --filter web generate:css   # Regenerate CSS from design tokens
 
 Single `notes` table in `apps/api/src/db/schema.ts`:
 
-- `id` (text, PK, nanoid), `title` (text), `content` (text, Tiptap JSON), `createdAt`/`updatedAt` (ISO 8601 strings)
+- `id` (text, PK, nanoid), `title` (text), `content` (text, Markdown), `createdAt`/`updatedAt` (ISO 8601 strings)
 
 ### API Routes (apps/api/src/index.ts)
 
@@ -84,13 +84,13 @@ Design tokens in `packages/tokens/` are compiled to CSS variables via `apps/web/
 
 ### Editor Package
 
-Tiptap v3 editor at `packages/editor/src/index.tsx` with extensions: StarterKit, CodeBlockLowlight, Lists, Images, Links, Typography, TextAlign, Markdown, TableOfContents, Placeholder. Content stored as Tiptap JSON format.
+Tiptap v3 editor at `packages/editor/src/index.ts` with extensions: StarterKit (includes Link), TextAlign, Typography, Placeholder, Markdown. Content stored as Markdown format.
 
 ### UI Package
 
-Components: Button, Badge, Card, DropdownMenu, Popover, Tooltip, Input, Separator, Toolbar.
+Components: Button, DropdownMenu, Popover, Tooltip, Input, Separator, Toolbar.
 Utility: `cn()` from `packages/ui/src/lib/utils.ts` (clsx + tailwind-merge).
-Hooks: useIsBreakpoint, useWindowSize, useThrottledCallback, useComposedRef, useMenuNavigation.
+Hooks: useIsBreakpoint, useThrottledCallback, useComposedRef, useMenuNavigation.
 
 ### Shared Package
 
@@ -112,4 +112,4 @@ Types: Note, CreateNoteRequest, UpdateNoteRequest, ApiResponse.
 
 - **API**: Cloudflare Workers (wrangler), D1 database binding "DB"
 - **Web**: Cloudflare Pages
-- **CI/CD**: GitHub Actions (deploy-api.yml, deploy-web.yml)
+- **CI/CD**: GitHub Actions (ci-cd.yml)

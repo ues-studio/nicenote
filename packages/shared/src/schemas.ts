@@ -43,15 +43,26 @@ export const noteIdParamSchema = z
   })
   .strict()
 
+export const noteListQuerySchema = z.object({
+  cursor: z.string().datetime({ offset: true }).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(50),
+})
+
 export type NoteSelect = z.infer<typeof noteSelectSchema>
 export type NoteInsert = z.infer<typeof noteInsertSchema>
 export type NoteCreateInput = z.infer<typeof noteCreateSchema>
 export type NoteUpdateInput = z.infer<typeof noteUpdateSchema>
+export type NoteListQuery = z.infer<typeof noteListQuerySchema>
+
+export interface NoteListResult {
+  data: NoteSelect[]
+  nextCursor: string | null
+}
 
 export interface NoteContractService {
-  list: () => Promise<NoteSelect[]> | NoteSelect[]
+  list: (query: NoteListQuery) => Promise<NoteListResult> | NoteListResult
   getById: (id: string) => Promise<NoteSelect | null> | NoteSelect | null
   create: (input: NoteCreateInput) => Promise<NoteSelect> | NoteSelect
   update: (id: string, input: NoteUpdateInput) => Promise<NoteSelect | null> | NoteSelect | null
-  remove: (id: string) => Promise<void> | void
+  remove: (id: string) => Promise<boolean> | boolean
 }

@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState } from 'react'
+import { memo, useCallback, useDeferredValue, useMemo, useState } from 'react'
 
 import { formatDistanceToNow } from 'date-fns'
 import { ArrowRightFromLine, FileText, Plus, Search, Trash2 } from 'lucide-react'
@@ -10,6 +10,7 @@ import { useMinuteTicker } from '../hooks/useMinuteTicker'
 import { WEB_ICON_MD_CLASS, WEB_ICON_SM_CLASS, WEB_ROW_WITH_ICON_CLASS } from '../lib/class-names'
 import { useNoteStore } from '../store/useNoteStore'
 
+import { ConfirmDialog } from './ConfirmDialog'
 import { ThemeToggle } from './ThemeToggle'
 
 interface NotesSidebarProps {
@@ -27,19 +28,19 @@ interface NoteListItemProps {
   note: NoteSelect
   isActive: boolean
   onSelect: (note: NoteSelect) => void
-  onDelete: (id: string) => void
+  onRequestDelete: (id: string) => void
 }
 
 const NoteListItem = memo(function NoteListItem({
   note,
   isActive,
   onSelect,
-  onDelete,
+  onRequestDelete,
 }: NoteListItemProps) {
   return (
-    <div
+    <button
       onClick={() => onSelect(note)}
-      className={`group cursor-pointer rounded-md p-3 transition-all ${
+      className={`group w-full cursor-pointer rounded-md p-3 text-left transition-all ${
         isActive
           ? 'bg-accent shadow-sm'
           : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
@@ -52,11 +53,19 @@ const NoteListItem = memo(function NoteListItem({
             {note.title || 'Untitled'}
           </span>
         </div>
-        <button
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Delete note"
           onClick={(e) => {
             e.stopPropagation()
-            if (confirm('Are you sure you want to delete this note?')) {
-              onDelete(note.id)
+            onRequestDelete(note.id)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              e.stopPropagation()
+              onRequestDelete(note.id)
             }
           }}
           className={`shrink-0 rounded-md p-1.5 transition-all hover:bg-destructive/10 hover:text-destructive ${
@@ -64,7 +73,7 @@ const NoteListItem = memo(function NoteListItem({
           }`}
         >
           <Trash2 className={WEB_ICON_SM_CLASS} />
-        </button>
+        </div>
       </div>
       <div className="mt-1 flex items-center justify-between">
         <p className="flex-1 truncate text-xs opacity-70">
@@ -74,7 +83,7 @@ const NoteListItem = memo(function NoteListItem({
           {formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true })}
         </span>
       </div>
-    </div>
+    </button>
   )
 })
 
@@ -90,6 +99,8 @@ export function NotesSidebar({
 }: NotesSidebarProps) {
   useMinuteTicker()
   const [search, setSearch] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const deferredSearch = useDeferredValue(search)
   const { notes, isLoading, currentNoteId } = useNoteStore(
     useShallow((state) => ({
       notes: state.notes,
@@ -113,7 +124,7 @@ export function NotesSidebar({
   )
 
   const filteredNotes = useMemo(() => {
-    const normalizedSearch = search.toLowerCase()
+    const normalizedSearch = deferredSearch.toLowerCase()
     return [...notes]
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
       .filter(
@@ -121,13 +132,14 @@ export function NotesSidebar({
           note.title.toLowerCase().includes(normalizedSearch) ||
           (note.content ?? '').toLowerCase().includes(normalizedSearch)
       )
-  }, [search, notes])
+  }, [deferredSearch, notes])
 
   return (
     <>
       {!isSidebarOpen && (
         <button
           onClick={openSidebar}
+          aria-label="Open sidebar"
           className="fixed top-4 left-4 z-50 rounded-md bg-background p-2 shadow-sm transition-colors hover:bg-accent focus:ring-0"
         >
           <ArrowRightFromLine className={WEB_ICON_MD_CLASS} />
@@ -145,6 +157,7 @@ export function NotesSidebar({
             <div className={WEB_ROW_WITH_ICON_CLASS}>
               <button
                 onClick={toggleSidebar}
+                aria-label={isSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
                 className="rounded-md p-1.5 transition-colors hover:bg-accent focus:ring-0"
               >
                 <ArrowRightFromLine
@@ -158,6 +171,7 @@ export function NotesSidebar({
               <button
                 onClick={() => void createNote()}
                 disabled={isLoading}
+                aria-label="New note"
                 className="rounded-md bg-primary p-2 text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
               >
                 <Plus className={WEB_ICON_SM_CLASS} />
@@ -171,6 +185,7 @@ export function NotesSidebar({
             <input
               type="search"
               placeholder="Search notes..."
+              aria-label="Search notes"
               className="w-full py-2 pr-4 pl-9 text-sm"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -195,7 +210,7 @@ export function NotesSidebar({
                   note={note}
                   isActive={currentNoteId === note.id}
                   onSelect={selectNote}
-                  onDelete={handleDelete}
+                  onRequestDelete={setDeleteTarget}
                 />
               ))}
           {!isLoading && filteredNotes.length === 0 && (
@@ -216,6 +231,21 @@ export function NotesSidebar({
           />
         )}
       </aside>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null)
+        }}
+        title="Delete note"
+        description="Are you sure you want to delete this note? This action cannot be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={() => {
+          if (deleteTarget) handleDelete(deleteTarget)
+          setDeleteTarget(null)
+        }}
+      />
     </>
   )
 }

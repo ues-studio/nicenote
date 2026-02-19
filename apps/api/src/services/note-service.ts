@@ -1,5 +1,5 @@
 import { drizzle } from 'drizzle-orm/d1'
-import { eq } from 'drizzle-orm/sql/expressions/conditions'
+import { eq, lt } from 'drizzle-orm/sql/expressions/conditions'
 import { desc } from 'drizzle-orm/sql/expressions/select'
 
 import { type NoteContractService, type NoteInsert, type NoteSelect } from '@nicenote/shared'
@@ -28,7 +28,20 @@ export function createNoteService(bindings: NoteServiceBindings): NoteContractSe
   const db = drizzle(bindings.DB)
 
   return {
-    list: async () => db.select().from(notes).orderBy(desc(notes.updatedAt)).all(),
+    list: async ({ cursor, limit }) => {
+      const where = cursor ? lt(notes.updatedAt, cursor) : undefined
+      const rows = await db
+        .select()
+        .from(notes)
+        .where(where)
+        .orderBy(desc(notes.updatedAt))
+        .limit(limit + 1)
+        .all()
+      const hasMore = rows.length > limit
+      const data = hasMore ? rows.slice(0, limit) : rows
+      const nextCursor = hasMore ? data[data.length - 1].updatedAt : null
+      return { data, nextCursor }
+    },
     getById: async (id) => {
       const result = await db.select().from(notes).where(eq(notes.id, id)).get()
       return result ?? null
@@ -59,7 +72,10 @@ export function createNoteService(bindings: NoteServiceBindings): NoteContractSe
       return result ?? null
     },
     remove: async (id) => {
+      const existing = await db.select({ id: notes.id }).from(notes).where(eq(notes.id, id)).get()
+      if (!existing) return false
       await db.delete(notes).where(eq(notes.id, id))
+      return true
     },
   }
 }

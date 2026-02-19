@@ -2,13 +2,6 @@
  * Design Tokens — Typography
  */
 
-export const fontFamily = {
-  sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', "'Segoe UI'", 'Roboto', 'sans-serif'].join(
-    ', '
-  ),
-  mono: ["'JetBrains Mono'", "'Fira Code'", "'Consolas'", 'monospace'].join(', '),
-} as const
-
 export const fontSize = {
   caption: { size: 10, lineHeight: 14 },
   meta: { size: 11, lineHeight: 16 },
@@ -28,6 +21,5 @@ export const fontWeight = {
   bold: 700,
 } as const
 
-export type FontFamily = typeof fontFamily
 export type FontSize = typeof fontSize
 export type FontWeight = typeof fontWeight

@@ -1,11 +1,7 @@
 import type { Editor } from '@tiptap/react'
-import { z } from 'zod'
-
-const markdownSchema = z.string()
 
 export function normalizeMarkdownContent(content: unknown): string {
-  const parsed = markdownSchema.safeParse(content)
-  return parsed.success ? parsed.data : ''
+  return typeof content === 'string' ? content : ''
 }
 
 export function readEditorMarkdown(editor: Editor | null): string {

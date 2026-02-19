@@ -93,31 +93,3 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 )
 
 Button.displayName = 'Button'
-
-type ButtonGroupProps = React.ComponentPropsWithRef<'div'> & {
-  orientation?: 'horizontal' | 'vertical'
-}
-
-export function ButtonGroup({
-  className,
-  children,
-  orientation = 'vertical',
-  ref,
-  ...props
-}: ButtonGroupProps) {
-  const groupClasses = useMemo(() => {
-    const orientationValue = orientation || 'vertical'
-    return cn(
-      'flex gap-px',
-      orientationValue === 'vertical' ? 'flex-col' : 'flex-row',
-      'tiptap-button-group',
-      className
-    )
-  }, [orientation, className])
-
-  return (
-    <div ref={ref} className={groupClasses} data-orientation={orientation} role="group" {...props}>
-      {children}
-    </div>
-  )
-}

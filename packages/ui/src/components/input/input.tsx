@@ -16,15 +16,4 @@ function Input({ className, type, ...props }: React.ComponentProps<'input'>) {
   )
 }
 
-function InputGroup({ className, children, ...props }: React.ComponentProps<'div'>) {
-  return (
-    <div
-      className={cn('tiptap-input-group relative flex w-full items-center', className)}
-      {...props}
-    >
-      {children}
-    </div>
-  )
-}
-
-export { Input, InputGroup }
+export { Input }

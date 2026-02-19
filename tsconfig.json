@@ -5,6 +5,7 @@
     { "path": "./apps/web" },
     { "path": "./packages/editor" },
     { "path": "./packages/shared" },
-    { "path": "./packages/tokens" }
+    { "path": "./packages/tokens" },
+    { "path": "./packages/ui" }
   ]
 }

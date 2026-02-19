@@ -12,7 +12,7 @@ interface NoteStore {
   selectNote: (note: NoteSelect | null) => void
   createNote: () => Promise<void>
   updateNoteLocal: (id: string, updates: NoteUpdateInput) => void
-  saveNote: (id: string, updates: NoteUpdateInput) => Promise<void>
+  saveNote: (id: string, updates: NoteUpdateInput) => Promise<NoteSelect>
   deleteNote: (id: string) => Promise<void>
 }
 
@@ -59,10 +59,10 @@ export const useNoteStore = create<NoteStore>((set) => ({
   fetchNotes: async () => {
     set({ isLoading: true })
     try {
-      const res = await api.notes.$get()
+      const res = await api.notes.$get({ query: {} })
       if (res.ok) {
-        const data = await res.json()
-        set({ notes: normalizeNoteList(data) })
+        const json = await res.json()
+        set({ notes: normalizeNoteList(json.data) })
       } else {
         console.error('Failed to fetch notes:', res.status)
       }
@@ -120,14 +120,31 @@ export const useNoteStore = create<NoteStore>((set) => ({
   },
 
   saveNote: async (id, updates) => {
-    try {
-      await api.notes[':id'].$patch({
-        param: { id },
-        json: updates,
-      })
-    } catch (error) {
-      console.error('Failed to save note:', error)
+    const res = await api.notes[':id'].$patch({
+      param: { id },
+      json: updates,
+    })
+
+    if (!res.ok) {
+      throw new Error(`Save failed: ${res.status}`)
     }
+
+    const saved = normalizeNote(await res.json())
+    if (!saved) {
+      throw new Error('Save returned invalid data')
+    }
+
+    set((state) => {
+      const serverFields = { updatedAt: saved.updatedAt, createdAt: saved.createdAt }
+      const notes = state.notes.map((n) => (n.id === saved.id ? { ...n, ...serverFields } : n))
+      const currentNote =
+        state.currentNote?.id === saved.id
+          ? { ...state.currentNote, ...serverFields }
+          : state.currentNote
+      return { notes, currentNote }
+    })
+
+    return saved
   },
 
   deleteNote: async (id) => {

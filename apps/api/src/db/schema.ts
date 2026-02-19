@@ -6,7 +6,7 @@ export const notes = sqliteTable('notes', {
     .primaryKey()
     .$defaultFn(() => nanoid()),
   title: text('title').default('Untitled').notNull(),
-  content: text('content'), // Tiptap JSON
+  content: text('content'), // Markdown
   createdAt: text('created_at')
     .$defaultFn(() => new Date().toISOString())
     .notNull(),

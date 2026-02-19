@@ -11,8 +11,7 @@
     "@tiptap/markdown": "^3.18.0",
     "@tiptap/react": "^3.18.0",
     "@tiptap/starter-kit": "^3.18.0",
-    "lucide-react": "^0.563.0",
-    "zod": "^4.3.6"
+    "lucide-react": "^0.563.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.10",

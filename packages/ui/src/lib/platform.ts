@@ -22,7 +22,11 @@ export const MAC_SYMBOLS: Record<string, string> = {
 
 /** 判断当前平台是否为 macOS */
 export function isMac(): boolean {
-  return typeof navigator !== 'undefined' && navigator.platform.toLowerCase().includes('mac')
+  if (typeof navigator === 'undefined') return false
+  const platform =
+    (navigator as Navigator & { userAgentData?: { platform: string } }).userAgentData?.platform ??
+    navigator.platform
+  return platform.toLowerCase().includes('mac')
 }
 
 /** 格式化单个快捷键（Mac 显示符号，非 Mac 显示文本） */

@@ -6,6 +6,7 @@ import {
   type NoteContractService,
   noteCreateSchema,
   noteIdParamSchema,
+  noteListQuerySchema,
   noteSelectSchema,
   noteUpdateSchema,
 } from '@nicenote/shared'
@@ -17,10 +18,11 @@ export function registerNoteRoutes<E extends Env, S extends Schema, BasePath ext
   createService: NoteContractFactory<E>
 ) {
   return app
-    .get('/notes', async (c) => {
+    .get('/notes', zValidator('query', noteListQuerySchema), async (c) => {
       const service = createService(c.env as E['Bindings'])
-      const result = await service.list()
-      return c.json(noteSelectSchema.array().parse(result))
+      const query = c.req.valid('query')
+      const { data, nextCursor } = await service.list(query)
+      return c.json({ data: noteSelectSchema.array().parse(data), nextCursor })
     })
     .get('/notes/:id', zValidator('param', noteIdParamSchema), async (c) => {
       const service = createService(c.env as E['Bindings'])
@@ -53,7 +55,8 @@ export function registerNoteRoutes<E extends Env, S extends Schema, BasePath ext
     .delete('/notes/:id', zValidator('param', noteIdParamSchema), async (c) => {
       const service = createService(c.env as E['Bindings'])
       const { id } = c.req.valid('param')
-      await service.remove(id)
+      const deleted = await service.remove(id)
+      if (!deleted) return c.json({ error: 'Not found' }, 404)
       return c.json({ success: true })
     })
 }
@@ -62,7 +65,7 @@ function _createContractAppForType() {
   const app = new Hono()
 
   return registerNoteRoutes(app, () => ({
-    list: () => [],
+    list: () => ({ data: [], nextCursor: null }),
     getById: () => null,
     create: () => ({
       id: '',
@@ -72,7 +75,7 @@ function _createContractAppForType() {
       updatedAt: '',
     }),
     update: () => null,
-    remove: () => undefined,
+    remove: () => false,
   }))
 }
 

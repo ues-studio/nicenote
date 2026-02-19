@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 
 import { NoteEditorPane } from './components/NoteEditorPane'
 import { NotesSidebar } from './components/NotesSidebar'
+import { Toasts } from './components/Toasts'
 import { useDebouncedNoteSave } from './hooks/useDebouncedNoteSave'
 import { useSidebarLayout } from './hooks/useSidebarLayout'
 import { useTheme } from './hooks/useTheme'
@@ -44,6 +45,7 @@ export default function App() {
         sidebarWidth={sidebarWidth}
         scheduleSave={scheduleSave}
       />
+      <Toasts />
     </div>
   )
 }

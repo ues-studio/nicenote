@@ -18,6 +18,8 @@ export type {
   NoteContractService,
   NoteCreateInput,
   NoteInsert,
+  NoteListQuery,
+  NoteListResult,
   NoteSelect,
   NoteUpdateInput,
 } from './schemas'
@@ -25,6 +27,7 @@ export {
   noteCreateSchema,
   noteIdParamSchema,
   noteInsertSchema,
+  noteListQuerySchema,
   noteSelectSchema,
   noteUpdateSchema,
 } from './schemas'

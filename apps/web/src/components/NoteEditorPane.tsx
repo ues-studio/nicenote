@@ -53,6 +53,7 @@ export function NoteEditorPane({ isSidebarOpen, sidebarWidth, scheduleSave }: No
               type="text"
               className="w-full border-none text-4xl font-bold placeholder:text-muted-foreground/30 focus:ring-0"
               placeholder="Note Title"
+              aria-label="Note title"
               value={currentNote.title}
               onChange={handleTitleChange}
             />
@@ -78,6 +79,7 @@ export function NoteEditorPane({ isSidebarOpen, sidebarWidth, scheduleSave }: No
           <p className="text-sm opacity-70">Choose from the sidebar or create a new one</p>
           <button
             onClick={() => void createNote()}
+            aria-label="Create new note"
             className="mt-6 flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-primary-foreground transition-colors hover:bg-primary/90"
           >
             <Plus className={WEB_ICON_SM_CLASS} />
