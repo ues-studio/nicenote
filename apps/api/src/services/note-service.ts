@@ -87,7 +87,7 @@ export function createNoteService(bindings: NoteServiceBindings): NoteContractSe
         updates.title = body.title
       }
 
-      if (body.content !== undefined) {
+      if (body.content !== undefined && body.content !== null) {
         const sanitized = sanitizeContent(body.content)
         updates.content = sanitized
         updates.summary = generateSummary(sanitized)
