@@ -1,1 +1,2 @@
+pnpm --filter web generate:css
 pnpm lint-staged
