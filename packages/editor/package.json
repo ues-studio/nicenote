@@ -10,12 +10,12 @@
     "@tiptap/extension-typography": "^3.18.0",
     "@tiptap/markdown": "^3.18.0",
     "@tiptap/react": "^3.18.0",
-    "@tiptap/starter-kit": "^3.18.0",
-    "lucide-react": "^0.563.0"
+    "@tiptap/starter-kit": "^3.18.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.10",
     "@types/react-dom": "^19.2.3",
+    "lucide-react": "^0.563.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
@@ -24,6 +24,7 @@
     "./styles/editor.css": "./src/styles/editor.css"
   },
   "peerDependencies": {
+    "lucide-react": "^0.563.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

@@ -49,10 +49,15 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     const shortcuts = useMemo<string[]>(() => parseShortcutKeys({ shortcutKeys }), [shortcutKeys])
 
     // --- Tailwind Migration Standard Classes ---
+    const dataSize = props['data-size']
+    const dataStyle = props['data-style']
+    const dataActiveState = props['data-active-state']
+    const dataState = props['data-state']
+
     const buttonClasses = useMemo(() => {
-      const size = props['data-size'] || 'default'
-      const variant = props['data-style'] || 'default'
-      const active = props['data-active-state'] === 'on' || props['data-state'] === 'open'
+      const size = dataSize || 'default'
+      const variant = dataStyle || 'default'
+      const active = dataActiveState === 'on' || dataState === 'open'
 
       return cn(
         'flex h-8 min-w-8 items-center justify-center gap-1 rounded-lg border-none p-2 text-sm font-medium transition-all',
@@ -68,7 +73,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         'disabled:cursor-not-allowed disabled:opacity-50',
         className
       )
-    }, [props, className])
+    }, [dataSize, dataStyle, dataActiveState, dataState, className])
 
     if (!tooltip || !showTooltip) {
       return (

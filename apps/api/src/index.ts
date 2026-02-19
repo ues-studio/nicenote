@@ -21,7 +21,7 @@ const ALLOWED_ORIGINS = [
 app.use(
   '*',
   cors({
-    origin: (origin) => (ALLOWED_ORIGINS.includes(origin) ? origin : ''),
+    origin: (origin) => (ALLOWED_ORIGINS.includes(origin) ? origin : null),
     allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
     exposeHeaders: ['Content-Length'],
@@ -29,13 +29,42 @@ app.use(
   })
 )
 
+// Per-isolate sliding window rate limiter
+const RATE_LIMIT_WINDOW_MS = 60_000
+const RATE_LIMIT_MAX = 60
+
+const rateLimitMap = new Map<string, number[]>()
+
+app.use('*', async (c, next) => {
+  const ip = c.req.header('cf-connecting-ip') ?? 'unknown'
+  const now = Date.now()
+  const windowStart = now - RATE_LIMIT_WINDOW_MS
+
+  let timestamps = rateLimitMap.get(ip)
+  if (timestamps) {
+    timestamps = timestamps.filter((t) => t > windowStart)
+    rateLimitMap.set(ip, timestamps)
+  } else {
+    timestamps = []
+    rateLimitMap.set(ip, timestamps)
+  }
+
+  if (timestamps.length >= RATE_LIMIT_MAX) {
+    return c.json({ error: 'Too Many Requests' }, 429)
+  }
+
+  timestamps.push(now)
+  await next()
+})
+
 // 全局错误处理
 app.onError((err, c) => {
-  console.error(`Error: ${err.message}`)
+  console.error(err)
   return c.json({ error: 'Internal Server Error' }, 500)
 })
 
 app.get('/', (c) => c.json({ status: 'ok', message: 'Nicenote API is running' }))
+app.get('/health', (c) => c.json({ status: 'ok' }))
 
 export type {
   NoteInsertSchemaMatchesDrizzle,

@@ -27,12 +27,14 @@ function createDbMock() {
     from: vi.fn(),
     orderBy: vi.fn(),
     where: vi.fn(),
+    limit: vi.fn(),
     all: vi.fn(),
     get: vi.fn(),
   }
   selectQuery.from.mockReturnValue(selectQuery)
   selectQuery.orderBy.mockReturnValue(selectQuery)
   selectQuery.where.mockReturnValue(selectQuery)
+  selectQuery.limit.mockReturnValue(selectQuery)
 
   const insertQuery = {
     values: vi.fn(),
@@ -54,8 +56,11 @@ function createDbMock() {
 
   const deleteQuery = {
     where: vi.fn(),
+    returning: vi.fn(),
+    get: vi.fn(),
   }
-  deleteQuery.where.mockResolvedValue(undefined)
+  deleteQuery.where.mockReturnValue(deleteQuery)
+  deleteQuery.returning.mockReturnValue(deleteQuery)
 
   const db = {
     select: vi.fn(() => selectQuery),
@@ -79,11 +84,11 @@ describe('createNoteService', () => {
     drizzleMock.mockReturnValue(db)
 
     const service = createNoteService({ DB: {} as never })
-    const result = await service.list()
+    const result = await service.list({ limit: 50 })
 
     expect(descMock).toHaveBeenCalledWith(notes.updatedAt)
     expect(selectQuery.orderBy).toHaveBeenCalled()
-    expect(result).toEqual([{ id: 'n1' }])
+    expect(result).toEqual({ data: [{ id: 'n1' }], nextCursor: null })
   })
 
   it('gets note by id and maps missing to null', async () => {
@@ -133,14 +138,27 @@ describe('createNoteService', () => {
     expect(eqMock).toHaveBeenCalledWith(notes.id, 'n1')
   })
 
-  it('removes note by id', async () => {
+  it('removes note by id and returns true when found', async () => {
     const { db, deleteQuery } = createDbMock()
+    deleteQuery.get.mockResolvedValue({ id: 'n1' })
     drizzleMock.mockReturnValue(db)
 
     const service = createNoteService({ DB: {} as never })
-    await service.remove('n1')
+    const result = await service.remove('n1')
 
+    expect(result).toBe(true)
     expect(deleteQuery.where).toHaveBeenCalled()
     expect(eqMock).toHaveBeenCalledWith(notes.id, 'n1')
+  })
+
+  it('returns false when removing non-existent note', async () => {
+    const { db, deleteQuery } = createDbMock()
+    deleteQuery.get.mockResolvedValue(undefined)
+    drizzleMock.mockReturnValue(db)
+
+    const service = createNoteService({ DB: {} as never })
+    const result = await service.remove('nonexistent')
+
+    expect(result).toBe(false)
   })
 })

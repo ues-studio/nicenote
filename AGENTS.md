@@ -94,8 +94,8 @@ Hooks: useIsBreakpoint, useThrottledCallback, useComposedRef, useMenuNavigation.
 
 ### Shared Package
 
-Exports: date formatting (formatDate, timeAgo), async utils (debounce, throttle, sleep), deepClone, validators, parsers, storage adapters, request wrapper, string utils (toKebabCase, toCamelCase), random utils.
-Types: Note, CreateNoteRequest, UpdateNoteRequest, ApiResponse.
+Exports: async utils (debounce, throttle), parsers (toKebabCase), validators (getLinkValidationError).
+Types/Schemas: NoteSelect, NoteInsert, NoteCreateInput, NoteUpdateInput, NoteListItem, NoteListQuery, NoteListResult, NoteContractService, and corresponding Zod schemas.
 
 ## Conventions
 

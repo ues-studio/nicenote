@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { debounce, type NoteSelect, type NoteUpdateInput } from '@nicenote/shared'
 
@@ -6,6 +6,9 @@ import { useToastStore } from '../store/useToastStore'
 
 const MAX_RETRIES = 3
 const RETRY_DELAYS = [1000, 2000, 4000]
+const SAVED_DISPLAY_MS = 2000
+
+export type SaveStatus = 'idle' | 'unsaved' | 'saving' | 'saved'
 
 interface UseDebouncedNoteSaveOptions {
   delayMs?: number
@@ -41,6 +44,8 @@ export function useDebouncedNoteSave({ saveNote, delayMs = 1000 }: UseDebouncedN
   const saveNoteRef = useRef(saveNote)
   const addToast = useToastStore((state) => state.addToast)
   const addToastRef = useRef(addToast)
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     saveNoteRef.current = saveNote
@@ -62,15 +67,22 @@ export function useDebouncedNoteSave({ saveNote, delayMs = 1000 }: UseDebouncedN
 
     pending.saving = true
     pending.updates = {}
+    setSaveStatus('saving')
 
     const success = await attemptSave(saveNoteRef.current, id, updates)
 
     if (success) {
       const current = pendingSavesRef.current.get(id)
-      if (current && Object.keys(current.updates).length === 0) {
-        pendingSavesRef.current.delete(id)
-      } else if (current) {
+      if (current && Object.keys(current.updates).length > 0) {
+        // New updates accumulated during save — re-trigger debounced save
         current.saving = false
+        setSaveStatus('unsaved')
+        current.debouncedSave()
+      } else if (current) {
+        pendingSavesRef.current.delete(id)
+        if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+        setSaveStatus('saved')
+        savedTimerRef.current = setTimeout(() => setSaveStatus('idle'), SAVED_DISPLAY_MS)
       }
     } else {
       const current = pendingSavesRef.current.get(id)
@@ -78,6 +90,7 @@ export function useDebouncedNoteSave({ saveNote, delayMs = 1000 }: UseDebouncedN
         current.updates = { ...updates, ...current.updates }
         current.saving = false
       }
+      setSaveStatus('unsaved')
       addToastRef.current('Failed to save note. Your changes may not be persisted.')
     }
   }, [])
@@ -87,6 +100,9 @@ export function useDebouncedNoteSave({ saveNote, delayMs = 1000 }: UseDebouncedN
     if (!pending) return
     pending.debouncedSave.cancel()
     pendingSavesRef.current.delete(id)
+    if (pendingSavesRef.current.size === 0) {
+      setSaveStatus('idle')
+    }
   }, [])
 
   const scheduleSave = useCallback(
@@ -108,6 +124,7 @@ export function useDebouncedNoteSave({ saveNote, delayMs = 1000 }: UseDebouncedN
       }
 
       entry.updates = { ...entry.updates, ...updates }
+      setSaveStatus('unsaved')
       entry.debouncedSave()
     },
     [delayMs, flushEntry]
@@ -117,6 +134,8 @@ export function useDebouncedNoteSave({ saveNote, delayMs = 1000 }: UseDebouncedN
     const pendingSaves = pendingSavesRef.current
 
     return () => {
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+
       for (const [id, pending] of pendingSaves.entries()) {
         pending.debouncedSave.cancel()
         if (Object.keys(pending.updates).length === 0) continue
@@ -125,10 +144,11 @@ export function useDebouncedNoteSave({ saveNote, delayMs = 1000 }: UseDebouncedN
 
       pendingSaves.clear()
     }
-  }, [saveNote])
+  }, [])
 
   return {
     scheduleSave,
     cancelPendingSave,
+    saveStatus,
   }
 }

@@ -2,21 +2,26 @@ import { z } from 'zod'
 
 const isoDateTimeSchema = z.string().datetime({ offset: true })
 
+const MAX_TITLE_LENGTH = 500
+const MAX_CONTENT_LENGTH = 100_000
+
 export const noteSelectSchema = z
   .object({
     id: z.string(),
-    title: z.string(),
-    content: z.string().nullable(),
+    title: z.string().max(MAX_TITLE_LENGTH),
+    content: z.string().max(MAX_CONTENT_LENGTH).nullable(),
     createdAt: isoDateTimeSchema,
     updatedAt: isoDateTimeSchema,
   })
   .strict()
 
+export const noteListItemSchema = noteSelectSchema.omit({ content: true })
+
 export const noteInsertSchema = z
   .object({
     id: z.string().optional(),
-    title: z.string().optional(),
-    content: z.string().nullable().optional(),
+    title: z.string().max(MAX_TITLE_LENGTH).optional(),
+    content: z.string().max(MAX_CONTENT_LENGTH).nullable().optional(),
     createdAt: isoDateTimeSchema.optional(),
     updatedAt: isoDateTimeSchema.optional(),
   })
@@ -29,8 +34,8 @@ export const noteCreateSchema = noteInsertSchema.pick({
 
 export const noteUpdateSchema = z
   .object({
-    title: z.string().optional(),
-    content: z.string().nullable().optional(),
+    title: z.string().max(MAX_TITLE_LENGTH).optional(),
+    content: z.string().max(MAX_CONTENT_LENGTH).nullable().optional(),
   })
   .strict()
   .refine((input) => input.title !== undefined || input.content !== undefined, {
@@ -49,13 +54,14 @@ export const noteListQuerySchema = z.object({
 })
 
 export type NoteSelect = z.infer<typeof noteSelectSchema>
+export type NoteListItem = z.infer<typeof noteListItemSchema>
 export type NoteInsert = z.infer<typeof noteInsertSchema>
 export type NoteCreateInput = z.infer<typeof noteCreateSchema>
 export type NoteUpdateInput = z.infer<typeof noteUpdateSchema>
 export type NoteListQuery = z.infer<typeof noteListQuerySchema>
 
 export interface NoteListResult {
-  data: NoteSelect[]
+  data: NoteListItem[]
   nextCursor: string | null
 }
 

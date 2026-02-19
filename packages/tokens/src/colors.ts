@@ -19,9 +19,11 @@
 const gray = {
   50: '#F9FAFB',
   100: '#F3F4F6',
+  200: '#E5E7EB',
   300: '#D1D5DB',
   500: '#6B7280',
   700: '#374151',
+  800: '#1F2937',
   900: '#111827',
 } as const
 
@@ -148,7 +150,7 @@ export const darkColors = {
   primaryActive: blue[300],
   primaryFocus: blue[700],
   primaryDisabled: blue[900],
-  primaryText: gray[700],
+  primaryText: gray[300],
   primaryBg: '#172554',
 
   // --- 副色 ---
@@ -161,7 +163,7 @@ export const darkColors = {
 
   // --- 背景 ---
   bgBase: gray[900], // 页面基础背景
-  bgMuted: gray[900], // 次级背景
+  bgMuted: gray[800], // 次级背景（略浅于 bgBase，用于卡片/骨架屏等）
   bgActive: gray[700], // 激活背景
   bgHover: gray[700], // 悬停背景
 

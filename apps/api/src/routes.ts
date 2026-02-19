@@ -6,6 +6,7 @@ import {
   type NoteContractService,
   noteCreateSchema,
   noteIdParamSchema,
+  noteListItemSchema,
   noteListQuerySchema,
   noteSelectSchema,
   noteUpdateSchema,
@@ -22,7 +23,7 @@ export function registerNoteRoutes<E extends Env, S extends Schema, BasePath ext
       const service = createService(c.env as E['Bindings'])
       const query = c.req.valid('query')
       const { data, nextCursor } = await service.list(query)
-      return c.json({ data: noteSelectSchema.array().parse(data), nextCursor })
+      return c.json({ data: noteListItemSchema.array().parse(data), nextCursor })
     })
     .get('/notes/:id', zValidator('param', noteIdParamSchema), async (c) => {
       const service = createService(c.env as E['Bindings'])

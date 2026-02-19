@@ -60,13 +60,8 @@ const useToolbarNavigation = (toolbarRef: React.RefObject<HTMLDivElement | null>
           movePrev()
           break
         case 'ArrowRight':
-        case 'Tab':
           event.preventDefault()
-          if (event.key === 'Tab' && event.shiftKey) {
-            movePrev()
-          } else {
-            moveNext()
-          }
+          moveNext()
           break
         case 'Home':
           event.preventDefault()

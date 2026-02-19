@@ -9,6 +9,7 @@ import {
   borderRadius,
   colors,
   darkColors,
+  darkShadowWeb,
   duration,
   easing,
   fontSize,
@@ -258,13 +259,26 @@ function buildColorSections(palette: Palette): VarSection[] {
   }))
 }
 
+function buildDarkShadowSection(): VarSection {
+  return {
+    title: 'Shadows',
+    entries: typedEntries(darkShadowWeb).map(
+      ([key, value]): VarEntry => [`shadow-${toKebabCase(key)}`, value]
+    ),
+  }
+}
+
 function buildThemeBlock(
   selector: string,
   palette: Palette,
-  options: { includeBase?: boolean; comment?: string } = {}
+  options: { includeBase?: boolean; includeDarkShadows?: boolean; comment?: string } = {}
 ): string {
-  const { includeBase = false, comment } = options
-  const sections = [...(includeBase ? buildBaseSections() : []), ...buildColorSections(palette)]
+  const { includeBase = false, includeDarkShadows = false, comment } = options
+  const sections = [
+    ...(includeBase ? buildBaseSections() : []),
+    ...buildColorSections(palette),
+    ...(includeDarkShadows ? [buildDarkShadowSection()] : []),
+  ]
   const lines: string[] = [`${selector} {`]
 
   if (comment) {
@@ -288,7 +302,7 @@ const themeCSS = buildThemeBlock('@theme', colors, {
   includeBase: true,
   comment: 'Auto-generated from @nicenote/tokens',
 })
-const darkThemeCSS = buildThemeBlock('.dark', darkColors)
+const darkThemeCSS = buildThemeBlock('.dark', darkColors, { includeDarkShadows: true })
 
 const indexCssContent = `@import 'tailwindcss';
 @plugin "@tailwindcss/typography";

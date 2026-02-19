@@ -20,6 +20,7 @@ export function NicenoteEditorContent({
     return (
       <textarea
         className="nn-editor-source"
+        aria-label="Note content"
         spellCheck={false}
         value={sourceValue}
         onChange={(event) => onSourceChange(event.target.value)}

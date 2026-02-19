@@ -31,7 +31,12 @@ export function createNoteService(bindings: NoteServiceBindings): NoteContractSe
     list: async ({ cursor, limit }) => {
       const where = cursor ? lt(notes.updatedAt, cursor) : undefined
       const rows = await db
-        .select()
+        .select({
+          id: notes.id,
+          title: notes.title,
+          createdAt: notes.createdAt,
+          updatedAt: notes.updatedAt,
+        })
         .from(notes)
         .where(where)
         .orderBy(desc(notes.updatedAt))
@@ -72,10 +77,12 @@ export function createNoteService(bindings: NoteServiceBindings): NoteContractSe
       return result ?? null
     },
     remove: async (id) => {
-      const existing = await db.select({ id: notes.id }).from(notes).where(eq(notes.id, id)).get()
-      if (!existing) return false
-      await db.delete(notes).where(eq(notes.id, id))
-      return true
+      const deleted = await db
+        .delete(notes)
+        .where(eq(notes.id, id))
+        .returning({ id: notes.id })
+        .get()
+      return !!deleted
     },
   }
 }

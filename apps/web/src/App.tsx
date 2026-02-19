@@ -1,19 +1,19 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 
-import { NoteEditorPane } from './components/NoteEditorPane'
 import { NotesSidebar } from './components/NotesSidebar'
 import { Toasts } from './components/Toasts'
 import { useDebouncedNoteSave } from './hooks/useDebouncedNoteSave'
 import { useSidebarLayout } from './hooks/useSidebarLayout'
-import { useTheme } from './hooks/useTheme'
 import { useNoteStore } from './store/useNoteStore'
 
-export default function App() {
-  useTheme()
+const NoteEditorPane = lazy(() =>
+  import('./components/NoteEditorPane').then((m) => ({ default: m.NoteEditorPane }))
+)
 
+export default function App() {
   const fetchNotes = useNoteStore((state) => state.fetchNotes)
   const saveNote = useNoteStore((state) => state.saveNote)
-  const { scheduleSave, cancelPendingSave } = useDebouncedNoteSave({ saveNote })
+  const { scheduleSave, cancelPendingSave, saveStatus } = useDebouncedNoteSave({ saveNote })
   const {
     isSidebarOpen,
     isMobile,
@@ -28,6 +28,8 @@ export default function App() {
     fetchNotes()
   }, [fetchNotes])
 
+  const mobileOverlayOpen = isMobile && isSidebarOpen
+
   return (
     <div className="flex h-screen overflow-hidden">
       <NotesSidebar
@@ -40,11 +42,21 @@ export default function App() {
         startResizing={startResizing}
         cancelPendingSave={cancelPendingSave}
       />
-      <NoteEditorPane
-        isSidebarOpen={isSidebarOpen}
-        sidebarWidth={sidebarWidth}
-        scheduleSave={scheduleSave}
-      />
+      <Suspense
+        fallback={
+          <div className="flex flex-1 items-center justify-center text-muted-foreground">
+            Loading editor...
+          </div>
+        }
+      >
+        <NoteEditorPane
+          isSidebarOpen={isSidebarOpen}
+          sidebarWidth={sidebarWidth}
+          scheduleSave={scheduleSave}
+          saveStatus={saveStatus}
+          inert={mobileOverlayOpen}
+        />
+      </Suspense>
       <Toasts />
     </div>
   )

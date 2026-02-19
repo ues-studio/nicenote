@@ -1,15 +1,17 @@
 import { create } from 'zustand'
 
-import type { NoteSelect, NoteUpdateInput } from '@nicenote/shared'
+import type { NoteListItem, NoteSelect, NoteUpdateInput } from '@nicenote/shared'
 
 import { api } from '../lib/api'
 
 interface NoteStore {
-  notes: NoteSelect[]
+  notes: NoteListItem[]
   currentNote: NoteSelect | null
-  isLoading: boolean
+  isFetching: boolean
+  isCreating: boolean
+  error: string | null
   fetchNotes: () => Promise<void>
-  selectNote: (note: NoteSelect | null) => void
+  selectNote: (note: NoteListItem | null) => Promise<void>
   createNote: () => Promise<void>
   updateNoteLocal: (id: string, updates: NoteUpdateInput) => void
   saveNote: (id: string, updates: NoteUpdateInput) => Promise<NoteSelect>
@@ -18,6 +20,24 @@ interface NoteStore {
 
 function toIsoNow() {
   return new Date().toISOString()
+}
+
+function normalizeListItem(raw: unknown): NoteListItem | null {
+  if (typeof raw !== 'object' || raw === null) return null
+
+  const data = raw as Record<string, unknown>
+  const id = typeof data.id === 'string' ? data.id : ''
+  if (!id) return null
+
+  const createdAt = typeof data.createdAt === 'string' ? data.createdAt : toIsoNow()
+  const updatedAt = typeof data.updatedAt === 'string' ? data.updatedAt : createdAt
+
+  return {
+    id,
+    title: typeof data.title === 'string' ? data.title : 'Untitled',
+    createdAt,
+    updatedAt,
+  }
 }
 
 function normalizeNote(raw: unknown): NoteSelect | null {
@@ -39,11 +59,11 @@ function normalizeNote(raw: unknown): NoteSelect | null {
   }
 }
 
-function normalizeNoteList(raw: unknown): NoteSelect[] {
+function normalizeNoteList(raw: unknown): NoteListItem[] {
   if (!Array.isArray(raw)) return []
 
-  return raw.reduce<NoteSelect[]>((notes, item) => {
-    const normalized = normalizeNote(item)
+  return raw.reduce<NoteListItem[]>((notes, item) => {
+    const normalized = normalizeListItem(item)
     if (normalized) {
       notes.push(normalized)
     }
@@ -54,31 +74,47 @@ function normalizeNoteList(raw: unknown): NoteSelect[] {
 export const useNoteStore = create<NoteStore>((set) => ({
   notes: [],
   currentNote: null,
-  isLoading: false,
+  isFetching: false,
+  isCreating: false,
+  error: null,
 
   fetchNotes: async () => {
-    set({ isLoading: true })
+    set({ isFetching: true, error: null })
     try {
       const res = await api.notes.$get({ query: {} })
       if (res.ok) {
         const json = await res.json()
         set({ notes: normalizeNoteList(json.data) })
       } else {
-        console.error('Failed to fetch notes:', res.status)
+        set({ error: `Failed to fetch notes (${res.status})` })
       }
-    } catch (error) {
-      console.error('Network error while fetching notes:', error)
+    } catch {
+      set({ error: 'Network error while fetching notes' })
     } finally {
-      set({ isLoading: false })
+      set({ isFetching: false })
     }
   },
 
-  selectNote: (note) => {
-    set({ currentNote: note })
+  selectNote: async (note) => {
+    if (!note) {
+      set({ currentNote: null })
+      return
+    }
+    try {
+      const res = await api.notes[':id'].$get({ param: { id: note.id } })
+      if (res.ok) {
+        const full = normalizeNote(await res.json())
+        set({ currentNote: full })
+      } else {
+        set({ error: `Failed to fetch note (${res.status})` })
+      }
+    } catch {
+      set({ error: 'Network error while fetching note' })
+    }
   },
 
   createNote: async () => {
-    set({ isLoading: true })
+    set({ isCreating: true, error: null })
     try {
       const res = await api.notes.$post({
         json: { title: 'Untitled', content: '' },
@@ -86,33 +122,40 @@ export const useNoteStore = create<NoteStore>((set) => ({
       if (res.ok) {
         const newNote = normalizeNote(await res.json())
         if (!newNote) {
-          console.error('Failed to normalize created note response')
+          set({ error: 'Failed to parse created note response' })
           return
         }
 
+        const listItem: NoteListItem = {
+          id: newNote.id,
+          title: newNote.title,
+          createdAt: newNote.createdAt,
+          updatedAt: newNote.updatedAt,
+        }
+
         set((state) => ({
-          notes: [newNote, ...state.notes],
+          notes: [listItem, ...state.notes],
           currentNote: newNote,
         }))
       } else {
-        const errorText = await res.text()
-        console.error('Failed to create note:', res.status, errorText)
+        set({ error: `Failed to create note (${res.status})` })
       }
-    } catch (error) {
-      console.error('Error creating note:', error)
+    } catch {
+      set({ error: 'Network error while creating note' })
     } finally {
-      set({ isLoading: false })
+      set({ isCreating: false })
     }
   },
 
   updateNoteLocal: (id, updates) => {
+    const now = new Date().toISOString()
     set((state) => {
-      const newNotes = state.notes.map((n) =>
-        n.id === id ? { ...n, ...updates, updatedAt: new Date().toISOString() } : n
-      )
+      const listUpdates: Partial<NoteListItem> = { updatedAt: now }
+      if (updates.title !== undefined) listUpdates.title = updates.title
+      const newNotes = state.notes.map((n) => (n.id === id ? { ...n, ...listUpdates } : n))
       const newCurrentNote =
         state.currentNote?.id === id
-          ? { ...state.currentNote, ...updates, updatedAt: new Date().toISOString() }
+          ? { ...state.currentNote, ...updates, updatedAt: now }
           : state.currentNote
 
       return { notes: newNotes, currentNote: newCurrentNote }
@@ -148,6 +191,7 @@ export const useNoteStore = create<NoteStore>((set) => ({
   },
 
   deleteNote: async (id) => {
+    set({ error: null })
     try {
       const res = await api.notes[':id'].$delete({
         param: { id },
@@ -157,9 +201,11 @@ export const useNoteStore = create<NoteStore>((set) => ({
           notes: state.notes.filter((n) => n.id !== id),
           currentNote: state.currentNote?.id === id ? null : state.currentNote,
         }))
+      } else {
+        set({ error: `Failed to delete note (${res.status})` })
       }
-    } catch (error) {
-      console.error('Failed to delete note:', error)
+    } catch {
+      set({ error: 'Network error while deleting note' })
     }
   },
 }))

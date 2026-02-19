@@ -180,6 +180,7 @@ export const TooltipTrigger = forwardRef<HTMLElement, TooltipTriggerProps>(funct
 
   return (
     <button
+      type="button"
       ref={ref}
       data-tooltip-state={context.open ? 'open' : 'closed'}
       className="tiptap-tooltip-trigger inline-flex items-center justify-center"

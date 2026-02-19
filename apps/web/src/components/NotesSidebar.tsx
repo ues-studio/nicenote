@@ -1,16 +1,16 @@
-import { memo, useCallback, useDeferredValue, useMemo, useState } from 'react'
+import { memo, useCallback, useDeferredValue, useMemo, useRef, useState } from 'react'
 
 import { formatDistanceToNow } from 'date-fns'
 import { ArrowRightFromLine, FileText, Plus, Search, Trash2 } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 
-import type { NoteSelect } from '@nicenote/shared'
+import type { NoteListItem as NoteListItemType } from '@nicenote/shared'
 
 import { useMinuteTicker } from '../hooks/useMinuteTicker'
 import { WEB_ICON_MD_CLASS, WEB_ICON_SM_CLASS, WEB_ROW_WITH_ICON_CLASS } from '../lib/class-names'
 import { useNoteStore } from '../store/useNoteStore'
+import { useToastStore } from '../store/useToastStore'
 
-import { ConfirmDialog } from './ConfirmDialog'
 import { ThemeToggle } from './ThemeToggle'
 
 interface NotesSidebarProps {
@@ -25,65 +25,54 @@ interface NotesSidebarProps {
 }
 
 interface NoteListItemProps {
-  note: NoteSelect
+  note: NoteListItemType
   isActive: boolean
-  onSelect: (note: NoteSelect) => void
-  onRequestDelete: (id: string) => void
+  onSelect: (note: NoteListItemType) => void
+  onDelete: (id: string) => void
 }
 
 const NoteListItem = memo(function NoteListItem({
   note,
   isActive,
   onSelect,
-  onRequestDelete,
+  onDelete,
 }: NoteListItemProps) {
   return (
-    <button
-      onClick={() => onSelect(note)}
-      className={`group w-full cursor-pointer rounded-md p-3 text-left transition-all ${
+    <div
+      className={`group relative flex flex-col rounded-md p-3 transition-all ${
         isActive
           ? 'bg-accent shadow-sm'
           : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
       }`}
     >
-      <div className="flex items-center justify-between gap-2">
-        <div className={`${WEB_ROW_WITH_ICON_CLASS} overflow-hidden`}>
-          <FileText className={`${WEB_ICON_SM_CLASS} shrink-0 opacity-50`} />
-          <span className="truncate font-medium text-muted-foreground">
-            {note.title || 'Untitled'}
+      <button
+        onClick={() => onSelect(note)}
+        className="w-full cursor-pointer text-left focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-primary/50"
+      >
+        <div className="flex items-center gap-2 pr-8">
+          <div className={`${WEB_ROW_WITH_ICON_CLASS} overflow-hidden`}>
+            <FileText className={`${WEB_ICON_SM_CLASS} shrink-0 opacity-50`} />
+            <span className="truncate font-medium text-muted-foreground">
+              {note.title || 'Untitled'}
+            </span>
+          </div>
+        </div>
+        <div className="mt-1 flex items-center justify-between">
+          <span className="text-caption whitespace-nowrap opacity-50">
+            {formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true })}
           </span>
         </div>
-        <div
-          role="button"
-          tabIndex={0}
-          aria-label="Delete note"
-          onClick={(e) => {
-            e.stopPropagation()
-            onRequestDelete(note.id)
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              e.stopPropagation()
-              onRequestDelete(note.id)
-            }
-          }}
-          className={`shrink-0 rounded-md p-1.5 transition-all hover:bg-destructive/10 hover:text-destructive ${
-            isActive ? 'opacity-100' : 'opacity-30 group-hover:opacity-100'
-          }`}
-        >
-          <Trash2 className={WEB_ICON_SM_CLASS} />
-        </div>
-      </div>
-      <div className="mt-1 flex items-center justify-between">
-        <p className="flex-1 truncate text-xs opacity-70">
-          {note.content ? note.content.substring(0, 40) : 'No content'}
-        </p>
-        <span className="ml-2 text-caption whitespace-nowrap opacity-50">
-          {formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true })}
-        </span>
-      </div>
-    </button>
+      </button>
+      <button
+        aria-label="Delete note"
+        onClick={() => onDelete(note.id)}
+        className={`absolute top-3 right-3 shrink-0 rounded-md p-1.5 transition-all hover:bg-destructive/10 hover:text-destructive focus-visible:ring-2 focus-visible:ring-primary/50 ${
+          isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
+        }`}
+      >
+        <Trash2 className={WEB_ICON_SM_CLASS} />
+      </button>
+    </div>
   )
 })
 
@@ -99,40 +88,95 @@ export function NotesSidebar({
 }: NotesSidebarProps) {
   useMinuteTicker()
   const [search, setSearch] = useState('')
-  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const deferredSearch = useDeferredValue(search)
-  const { notes, isLoading, currentNoteId } = useNoteStore(
+  const {
+    notes,
+    isFetching,
+    isCreating,
+    error,
+    currentNoteId,
+    selectNote,
+    createNote,
+    deleteNote,
+  } = useNoteStore(
     useShallow((state) => ({
       notes: state.notes,
-      isLoading: state.isLoading,
+      isFetching: state.isFetching,
+      isCreating: state.isCreating,
+      error: state.error,
       currentNoteId: state.currentNote?.id ?? null,
-    }))
-  )
-  const { selectNote, createNote, deleteNote } = useNoteStore(
-    useShallow((state) => ({
       selectNote: state.selectNote,
       createNote: state.createNote,
       deleteNote: state.deleteNote,
     }))
   )
-  const handleDelete = useCallback(
+  const addToast = useToastStore((state) => state.addToast)
+
+  const pendingDeleteTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
+
+  const handleDeleteWithUndo = useCallback(
     (id: string) => {
       cancelPendingSave(id)
-      void deleteNote(id)
+
+      const noteToDelete = notes.find((n) => n.id === id)
+      if (!noteToDelete) return
+
+      // Optimistically remove from UI
+      useNoteStore.setState((state) => ({
+        notes: state.notes.filter((n) => n.id !== id),
+        currentNote: state.currentNote?.id === id ? null : state.currentNote,
+      }))
+
+      // Start a grace period before actually sending the DELETE to the server
+      const deleteTimer = setTimeout(() => {
+        pendingDeleteTimers.current.delete(id)
+        void deleteNote(id)
+      }, 5000)
+
+      pendingDeleteTimers.current.set(id, deleteTimer)
+
+      addToast('Note deleted', {
+        duration: 5000,
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            const timer = pendingDeleteTimers.current.get(id)
+            if (timer) {
+              clearTimeout(timer)
+              pendingDeleteTimers.current.delete(id)
+            }
+            // Restore the note in the store
+            useNoteStore.setState((state) => ({
+              notes: [...state.notes, noteToDelete],
+            }))
+          },
+        },
+      })
     },
-    [cancelPendingSave, deleteNote]
+    [cancelPendingSave, notes, deleteNote, addToast]
   )
+
+  // #25: Stabilize sort — only re-sort when updatedAt ordering actually changes
+  const sortedNoteIds = useMemo(() => {
+    return [...notes]
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      .map((n) => n.id)
+  }, [notes])
+
+  const notesById = useMemo(() => {
+    const map = new Map<string, NoteListItemType>()
+    for (const note of notes) {
+      map.set(note.id, note)
+    }
+    return map
+  }, [notes])
 
   const filteredNotes = useMemo(() => {
     const normalizedSearch = deferredSearch.toLowerCase()
-    return [...notes]
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-      .filter(
-        (note) =>
-          note.title.toLowerCase().includes(normalizedSearch) ||
-          (note.content ?? '').toLowerCase().includes(normalizedSearch)
-      )
-  }, [deferredSearch, notes])
+    return sortedNoteIds
+      .map((id) => notesById.get(id)!)
+      .filter((note) => note && note.title.toLowerCase().includes(normalizedSearch))
+  }, [deferredSearch, sortedNoteIds, notesById])
 
   return (
     <>
@@ -140,7 +184,7 @@ export function NotesSidebar({
         <button
           onClick={openSidebar}
           aria-label="Open sidebar"
-          className="fixed top-4 left-4 z-50 rounded-md bg-background p-2 shadow-sm transition-colors hover:bg-accent focus:ring-0"
+          className="fixed top-4 left-4 z-50 rounded-md bg-background p-2 shadow-sm transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-primary/50"
         >
           <ArrowRightFromLine className={WEB_ICON_MD_CLASS} />
         </button>
@@ -158,7 +202,7 @@ export function NotesSidebar({
               <button
                 onClick={toggleSidebar}
                 aria-label={isSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
-                className="rounded-md p-1.5 transition-colors hover:bg-accent focus:ring-0"
+                className="rounded-md p-1.5 transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-primary/50"
               >
                 <ArrowRightFromLine
                   className={`${WEB_ICON_MD_CLASS} transition-transform duration-300 ${isSidebarOpen ? 'rotate-180' : ''}`}
@@ -170,7 +214,7 @@ export function NotesSidebar({
               <ThemeToggle />
               <button
                 onClick={() => void createNote()}
-                disabled={isLoading}
+                disabled={isCreating}
                 aria-label="New note"
                 className="rounded-md bg-primary p-2 text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
               >
@@ -194,7 +238,7 @@ export function NotesSidebar({
         </div>
 
         <div className="flex-1 space-y-1 overflow-y-auto p-2">
-          {isLoading && notes.length === 0
+          {isFetching && notes.length === 0
             ? Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="animate-pulse space-y-2 rounded-md p-3">
                   <div className={WEB_ROW_WITH_ICON_CLASS}>
@@ -210,10 +254,15 @@ export function NotesSidebar({
                   note={note}
                   isActive={currentNoteId === note.id}
                   onSelect={selectNote}
-                  onRequestDelete={setDeleteTarget}
+                  onDelete={handleDeleteWithUndo}
                 />
               ))}
-          {!isLoading && filteredNotes.length === 0 && (
+          {!isFetching && error && notes.length === 0 && (
+            <div className="py-12 text-center text-destructive">
+              <p className="text-sm">{error}</p>
+            </div>
+          )}
+          {!isFetching && !error && filteredNotes.length === 0 && (
             <div className="py-12 text-center text-muted-foreground">
               <p className="text-sm">No notes found</p>
             </div>
@@ -231,21 +280,6 @@ export function NotesSidebar({
           />
         )}
       </aside>
-
-      <ConfirmDialog
-        open={deleteTarget !== null}
-        onOpenChange={(open) => {
-          if (!open) setDeleteTarget(null)
-        }}
-        title="Delete note"
-        description="Are you sure you want to delete this note? This action cannot be undone."
-        confirmLabel="Delete"
-        variant="danger"
-        onConfirm={() => {
-          if (deleteTarget) handleDelete(deleteTarget)
-          setDeleteTarget(null)
-        }}
-      />
     </>
   )
 }

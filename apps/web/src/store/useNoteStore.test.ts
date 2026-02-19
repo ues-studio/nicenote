@@ -6,6 +6,7 @@ const { mockApi } = vi.hoisted(() => ({
       $get: vi.fn(),
       $post: vi.fn(),
       ':id': {
+        $get: vi.fn(),
         $patch: vi.fn(),
         $delete: vi.fn(),
       },
@@ -23,7 +24,9 @@ function resetStore() {
   useNoteStore.setState({
     notes: [],
     currentNote: null,
-    isLoading: false,
+    isFetching: false,
+    isCreating: false,
+    error: null,
   })
 }
 
@@ -36,19 +39,21 @@ describe('useNoteStore', () => {
   it('fetches and normalizes notes list', async () => {
     mockApi.notes.$get.mockResolvedValue(
       new Response(
-        JSON.stringify([
-          {
-            id: 'n1',
-            title: 'First',
-            content: 'A',
-            createdAt: '2026-02-14T01:02:03.000Z',
-            updatedAt: '2026-02-14T01:02:03.000Z',
-          },
-          {
-            id: '',
-            title: 'Invalid',
-          },
-        ]),
+        JSON.stringify({
+          data: [
+            {
+              id: 'n1',
+              title: 'First',
+              createdAt: '2026-02-14T01:02:03.000Z',
+              updatedAt: '2026-02-14T01:02:03.000Z',
+            },
+            {
+              id: '',
+              title: 'Invalid',
+            },
+          ],
+          nextCursor: null,
+        }),
         { status: 200, headers: { 'content-type': 'application/json' } }
       )
     )
@@ -56,7 +61,8 @@ describe('useNoteStore', () => {
     await useNoteStore.getState().fetchNotes()
 
     const state = useNoteStore.getState()
-    expect(state.isLoading).toBe(false)
+    expect(state.isFetching).toBe(false)
+    expect(state.error).toBeNull()
     expect(state.notes).toHaveLength(1)
     expect(state.notes[0]?.id).toBe('n1')
   })
@@ -80,7 +86,7 @@ describe('useNoteStore', () => {
     const state = useNoteStore.getState()
     expect(state.notes[0]?.id).toBe('n-new')
     expect(state.currentNote?.id).toBe('n-new')
-    expect(state.isLoading).toBe(false)
+    expect(state.isCreating).toBe(false)
   })
 
   it('updates note locally and patches remote note', async () => {
@@ -89,7 +95,6 @@ describe('useNoteStore', () => {
         {
           id: 'n1',
           title: 'Before',
-          content: 'A',
           createdAt: '2026-02-14T01:02:03.000Z',
           updatedAt: '2026-02-14T01:02:03.000Z',
         },
@@ -109,6 +114,19 @@ describe('useNoteStore', () => {
     expect(localState.notes[0]?.title).toBe('After')
     expect(localState.currentNote?.title).toBe('After')
 
+    mockApi.notes[':id'].$patch.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: 'n1',
+          title: 'After',
+          content: 'A',
+          createdAt: '2026-02-14T01:02:03.000Z',
+          updatedAt: '2026-02-14T01:02:03.000Z',
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      )
+    )
+
     await useNoteStore.getState().saveNote('n1', { title: 'After' })
     expect(mockApi.notes[':id'].$patch).toHaveBeenCalledWith({
       param: { id: 'n1' },
@@ -124,7 +142,6 @@ describe('useNoteStore', () => {
         {
           id: 'n1',
           title: 'First',
-          content: 'A',
           createdAt: '2026-02-14T01:02:03.000Z',
           updatedAt: '2026-02-14T01:02:03.000Z',
         },
