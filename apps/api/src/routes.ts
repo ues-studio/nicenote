@@ -41,8 +41,17 @@ export function registerNoteRoutes<E extends Env, S extends Schema, BasePath ext
     .post('/notes', zValidator('json', noteCreateSchema), async (c) => {
       const service = createService(c.env as E['Bindings'])
       const body = c.req.valid('json')
-      const result = await service.create(body)
-      return c.json(noteSelectSchema.parse(result))
+      let result: Awaited<ReturnType<typeof service.create>>
+      try {
+        result = await service.create(body)
+      } catch (e) {
+        return c.json({ error: 'service.create failed', detail: String(e) }, 500)
+      }
+      try {
+        return c.json(noteSelectSchema.parse(result))
+      } catch (e) {
+        return c.json({ error: 'schema parse failed', result, detail: String(e) }, 500)
+      }
     })
     .patch(
       '/notes/:id',
