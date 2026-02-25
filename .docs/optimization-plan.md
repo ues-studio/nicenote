@@ -1,334 +1,265 @@
-# Nicenote 优化计划 v2
+# Nicenote 项目优化方案
 
-状态标记：⬜ 待处理 | 🔧 进行中 | ✅ 已完成
-
----
-
-## P0 — 严重（功能缺陷 & 安全）
-
-### 0.2 ✅ 前端分页 — 只加载了第一页笔记
-
-**现状**：API 已实现游标分页（默认 50 条），但 `useNoteStore.fetchNotes()` 传空查询，仅获取第一页。超过 50 条笔记后旧笔记静默丢失。
-
-**方案**：
-
-- `useNoteStore` 新增 `hasMore`、`nextCursor`、`nextCursorId` 状态
-- `fetchNotes` 存储分页游标
-- 新增 `fetchMoreNotes()` action 用游标请求下一页
-- `NotesSidebar` 添加无限滚动（`IntersectionObserver` 检测列表底部）
-
-**涉及文件**：
-
-- `apps/web/src/store/useNoteStore.ts`
-- `apps/web/src/components/NotesSidebar.tsx`
-
-**影响**：中，不涉及 API 改动
+基于 [code_review.md](file:///Users/afu/Dev/nicenote/.docs/code_review.md) 的 5 项建议，制定分阶段、可独立交付的优化方案。每个阶段可单独落地，互不阻塞。
 
 ---
 
-## P1 — 高（数据一致性 & 安全加固）
+## Phase 1：后端统一错误处理（低风险，高收益）
 
-### 1.1 ✅ 乐观更新失败不回滚
+> 消除 `routes.ts` 中重复的 locale + JSON 错误响应样板代码
 
-**现状**：`saveNote` 失败后本地状态保留了"已更新"的数据，与服务端不一致。用户无感知。
+### 涉及文件
 
-**方案**：
+#### [NEW] [app-error.ts](file:///Users/afu/Dev/nicenote/apps/api/src/app-error.ts)
 
-- `saveNote` 调用前快照当前 note 状态
-- 失败时回滚到快照，并通过 toast 告知用户
-- 可选：失败后标记该笔记为"未同步"，在 UI 上显示同步状态图标
+创建自定义错误类：
 
-**涉及文件**：
+```typescript
+import type { StatusCode } from 'hono/utils/http-status'
+import type { ApiMessageKey } from './i18n'
 
-- `apps/web/src/store/useNoteStore.ts`
-- `apps/web/src/hooks/useDebouncedNoteSave.ts`
+export class AppError extends Error {
+  constructor(
+    public readonly messageKey: ApiMessageKey,
+    public readonly status: StatusCode = 500
+  ) {
+    super(messageKey)
+  }
+}
+```
 
----
+#### [MODIFY] [routes.ts](file:///Users/afu/Dev/nicenote/apps/api/src/routes.ts)
 
-### 1.2 ✅ 删除撤销后笔记位置错误
+将手写的 `if (!result) { ... return c.json(...) }` 替换为 `throw new AppError('notFound', 404)`，每处约减 3 行。
 
-**现状**：`handleDeleteWithUndo` 撤销后 `setState` 直接 push 到数组末尾，不按 `updatedAt` 排序。
+```diff
+-if (!result) {
+-  const locale = resolveLocale(c.req.header('accept-language'))
+-  return c.json({ error: t('notFound', locale) }, 404)
+-}
++if (!result) throw new AppError('notFound', 404)
+```
 
-**方案**：
+#### [MODIFY] [index.ts](file:///Users/afu/Dev/nicenote/apps/api/src/index.ts)
 
-- 撤销时记录笔记原始位置（index）或按 `updatedAt` 重新排序插入
-- 将删除/撤销逻辑从 `NotesSidebar.tsx` 抽取到 store action
+增强 `app.onError` 以识别 `AppError`：
 
-**涉及文件**：
+```diff
+ app.onError((err, c) => {
++  const locale = resolveLocale(c.req.header('accept-language'))
++  if (err instanceof AppError) {
++    return c.json({ error: t(err.messageKey, locale) }, err.status)
++  }
+   console.error(err)
+-  const locale = resolveLocale(c.req.header('accept-language'))
+   return c.json({ error: t('internalServerError', locale) }, 500)
+ })
+```
 
-- `apps/web/src/store/useNoteStore.ts` — 新增 `softDeleteNote` / `undoDelete` action
-- `apps/web/src/components/NotesSidebar.tsx` — 移除内联业务逻辑
+#### [MODIFY] [i18n.ts](file:///Users/afu/Dev/nicenote/apps/api/src/i18n.ts)
 
----
+扩展 `ApiMessageKey` 联合类型，为未来新增的业务错误（如 `'validationError'`）预留入口。当前无需立即修改，但接口设计已留好扩展口。
 
-### 1.3 ✅ selectNote 快速切换请求堆积
+### 验证计划
 
-**现状**：`selectNoteSeq` 防止了过时响应被使用，但旧请求未取消（无 `AbortController`），网络资源浪费。
-
-**方案**：
-
-- 维护一个 `AbortController` 实例，`selectNote` 每次调用时 abort 前一个
-- 在 `hc` 客户端 fetch 选项中传入 `signal`
-
-**涉及文件**：
-
-- `apps/web/src/store/useNoteStore.ts`
-- `apps/web/src/lib/api.ts` — 支持传入 abort signal
-
----
-
-### 1.4 ✅ 添加 Content-Security-Policy
-
-**现状**：前端 `_headers` 文件缺少 CSP，应用渲染用户内容（富文本编辑器），存在 XSS 风险。
-
-**方案**：
-
-- 在 `apps/web/public/_headers` 添加合理的 CSP
-- `default-src 'self'; script-src 'self' 'unsafe-inline'`（inline script 用于主题防闪烁）
-- `style-src 'self' 'unsafe-inline'`（Tiptap 行内样式）
-- 测试确保编辑器功能不受影响
-
-**涉及文件**：
-
-- `apps/web/public/_headers`
+- 运行现有测试：`pnpm --filter api test`
+  - [routes.test.ts](file:///Users/afu/Dev/nicenote/apps/api/src/routes.test.ts) 已覆盖 404 场景，重构后应全部通过
+  - [index.test.ts](file:///Users/afu/Dev/nicenote/apps/api/src/index.test.ts) 覆盖 CORS 逻辑，应不受影响
+- 新增测试：在 `routes.test.ts` 中增加用例验证 `AppError` 被全局中间件正确捕获并返回带 i18n 的 JSON
 
 ---
 
-### 1.5 ✅ API 端链接/内容安全校验
+## Phase 2：内存限流替换为平台级限流（低风险）
 
-**现状**：链接校验 (`getLinkValidationError`) 仅在客户端执行。通过 API 直接写入的 Markdown 内容可包含 `javascript:` 链接等 XSS 向量。
+> 移除无效的内存 Map 限流中间件，改用 Cloudflare 平台方案
 
-**方案**：
+### 涉及文件
 
-- API 写入时（POST/PATCH）对 content 做基本安全清洗
-- 过滤 `javascript:` / `data:` / `vbscript:` 协议链接
-- 可在 `note-service.ts` 的 create/update 方法中调用共享的 sanitize 函数
+#### [MODIFY] [index.ts](file:///Users/afu/Dev/nicenote/apps/api/src/index.ts)
 
-**涉及文件**：
+- 删除整个 `rateLimitMap` 中间件（约 35 行）
+- 删除 CORS 配置中的 `X-RateLimit-*` 暴露头
+- 在代码注释中说明限流改为 Cloudflare WAF Rate Limiting Rules
 
-- `packages/shared/src/` — 新增 `sanitizeMarkdown` 工具函数
-- `apps/api/src/services/note-service.ts`
+#### [NEW] [.docs/rate-limiting.md](file:///Users/afu/Dev/nicenote/.docs/rate-limiting.md)
 
----
+创建运维文档，记录 Cloudflare Dashboard 的限流规则配置步骤：
 
-## P2 — 中（性能 & 架构）
+- 路径：`Security → WAF → Rate Limiting Rules`
+- 推荐规则：同一 IP 在 60s 内超过 60 次请求 → Challenge / Block
+- 覆盖路径：`/notes*`
 
-### 2.1 ✅ Summary 物化为 DB 列
+### 验证计划
 
-**现状**：`generateSummary` 在 API list 接口中对每条笔记实时计算（正则处理），浪费请求时间。
-
-**方案**：
-
-- DB schema 新增 `summary` 列（已有字段定义，确认已在 migration 中）
-- 在 `create` 和 `update` 时计算并存储 summary
-- `list` 接口直接读取存储的 summary，不再实时计算
-- 前端乐观更新时仍本地计算用于即时显示
-
-**涉及文件**：
-
-- `apps/api/src/db/schema.ts`
-- `apps/api/src/services/note-service.ts`
-- 新增 DB migration
+- 运行现有测试：`pnpm --filter api test`
+  - `index.test.ts` 中无限流相关测试，删除代码不影响现有用例
+- 手动验证：本地 `pnpm --filter api dev`，确认 `/health` 和 `/notes` 端点正常响应且无 `X-RateLimit-*` 头
 
 ---
 
-### 2.2 ✅ 游标分页复合索引
+## Phase 3：编辑器 Snapshot 性能优化（中等风险）
 
-**现状**：分页查询条件 `(updatedAt, id)` 只有 `updatedAt` 单列索引，SQLite 无法高效处理组合条件。
+> 减少光标/选区变化引起的不必要重渲染
 
-**方案**：
+### 涉及文件
 
-- 新增 migration：`CREATE INDEX idx_notes_cursor ON notes(updated_at DESC, id DESC)`
-- 移除旧的 `idx_notes_updated_at` 单列索引（新索引覆盖其用途）
+#### [MODIFY] [editor-shell.tsx](file:///Users/afu/Dev/nicenote/packages/editor/src/web/editor-shell.tsx)
 
-**涉及文件**：
+将 `snapshot` 状态从组件顶层 `useState` 下沉到一个独立的 Zustand micro-store 或 React Context，使只有 `MinimalToolbar` 订阅并消费 snapshot：
 
-- `apps/api/src/db/schema.ts`
-- 新增 DB migration 文件
+```diff
+-const [snapshot, setSnapshot] = useState<NoteEditorStateSnapshot>(
+-  createEmptyEditorStateSnapshot()
+-)
++// snapshot 改为 useRef + 仅在 Toolbar 内订阅
++const snapshotRef = useRef<NoteEditorStateSnapshot>(createEmptyEditorStateSnapshot())
+```
 
----
+具体策略有两个可选方案：
 
-### 2.3 ✅ NotesSidebar 直接操作 store state → 抽取到 store action
+| 方案                            | 实现方式                                                                                     | 优点                           | 缺点           |
+| ------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------ | -------------- |
+| **A: useRef + forceUpdate**     | `snapshotRef.current = ...`，Toolbar 组件内自行 `useSyncExternalStore` 订阅                  | 零依赖，最小改动               | 需手动管理订阅 |
+| **B: 独立 Zustand micro-store** | 创建 `createEditorSnapshotStore()`，在 `onUpdate/onSelectionUpdate` 中 `store.setState(...)` | Toolbar 通过 selector 精准订阅 | 新增一个 store |
 
-**现状**：`NotesSidebar.tsx` 直接调用 `useNoteStore.setState()` 进行删除/撤销，绕过 store 封装。
+> [!IMPORTANT]
+> 推荐 **方案 B（Zustand micro-store）**，与项目已有模式一致，且 selector 可以做到字段级精准订阅。
 
-**方案**：
+### 验证计划
 
-- store 新增 `removeNoteOptimistic(id)` 和 `restoreNote(note)` action
-- `restoreNote` 按 `updatedAt` 排序插入
-- sidebar 只调用 store action，不直接操作 state
-
-**涉及文件**：
-
-- `apps/web/src/store/useNoteStore.ts`
-- `apps/web/src/components/NotesSidebar.tsx`
-
----
-
-### 2.4 ✅ normalizeNote / normalizeListItem 改用 Zod schema
-
-**现状**：手写的 `normalizeNote` 和 `normalizeListItem` 函数做运行时类型检查，与已有 Zod schema 功能重复且可能不一致。
-
-**方案**：
-
-- 替换为 `noteSelectSchema.safeParse()` / `noteListItemSchema.safeParse()`
-- 解析失败时打印 warning 并返回合理默认值
-- 删除手写 normalize 函数
-
-**涉及文件**：
-
-- `apps/web/src/store/useNoteStore.ts`
+- 运行 editor 包测试：`pnpm --filter @nicenote/editor test`
+- 手动验证：在浏览器中打开 DevTools → React Profiler，连续打字和移动光标时观察 `NicenoteEditorContent` 是否不再因 snapshot 变更而重渲染
 
 ---
 
-### 2.5 ✅ 消除重复常量 & 硬编码
+## Phase 4：Tokens 开发热更新 Vite Plugin（低风险）
 
-| 项目                  | 位置                                    | 方案                                          |
-| --------------------- | --------------------------------------- | --------------------------------------------- |
-| `LANG_STORAGE_KEY`    | `i18n/index.ts` + `useLanguageStore.ts` | 统一到 `shared` 或 `web/src/lib/constants.ts` |
-| `'Untitled'` 默认标题 | schema, service, store, i18n            | 定义 `DEFAULT_NOTE_TITLE` 常量在 shared 中    |
-| `EditorErrorBoundary` | `App.tsx` 内联                          | 合并到 `ErrorBoundary.tsx` 统一导出           |
+> 修改 tokens 后自动重新生成 CSS，无需重启 dev server
 
-**涉及文件**：
+### 涉及文件
 
-- `packages/shared/src/constants.ts` — 新增共享常量
-- 各引用处统一替换
+#### [NEW] [vite-plugin-tokens.ts](file:///Users/afu/Dev/nicenote/apps/web/plugins/vite-plugin-tokens.ts)
 
----
+创建一个简单的 Vite Plugin：
 
-### 2.6 ✅ useMinuteTicker 优化 — 避免全列表重渲染
+```typescript
+import { execSync } from 'node:child_process'
+import type { Plugin } from 'vite'
 
-**现状**：`NoteListItem` 接收 `_tick` prop 触发 memo 比较，导致每分钟所有可见项重渲染。
+export function tokensHotReload(): Plugin {
+  return {
+    name: 'nicenote:tokens-hot-reload',
+    configureServer(server) {
+      server.watcher.add('../../packages/tokens/src')
+      server.watcher.on('change', (path) => {
+        if (path.includes('packages/tokens/src')) {
+          execSync('pnpm --filter @nicenote/tokens build && tsx scripts/generate-css.ts', {
+            cwd: server.config.root,
+            stdio: 'inherit',
+          })
+        }
+      })
+    },
+  }
+}
+```
 
-**方案**：
+#### [MODIFY] [vite.config.ts](file:///Users/afu/Dev/nicenote/apps/web/vite.config.ts)
 
-- 将 `formatDistanceToNow` 放到 `NoteListItem` 内部调用 `useMinuteTicker`
-- 移除从父组件传入的 `tick` prop
-- 每个 item 独立订阅 ticker，只在自身时间文本变化时重渲染
+注册新 plugin：
 
-**涉及文件**：
+```diff
++import { tokensHotReload } from './plugins/vite-plugin-tokens'
 
-- `apps/web/src/components/NotesSidebar.tsx`
-- `apps/web/src/components/NoteListItem.tsx`（如果是独立文件）
+ return {
+-  plugins: [react(), tailwindcss()],
++  plugins: [react(), tailwindcss(), tokensHotReload()],
+```
 
----
+### 验证计划
 
-## P3 — 低（测试 & DX & 可访问性）
-
-### 3.1 ✅ 补充 packages/shared 测试
-
-**目标覆盖**：
-
-- `debounce.ts` — leading/trailing、cancel、flush 边界
-- `throttle.ts` — 节流窗口、leading false 首次调用行为
-- `generateSummary.ts` — 各种 Markdown 格式、空内容、超长内容
-- `getLinkValidationError.ts` — 合法/非法 URL、`javascript:` 协议
-- `toKebabCase.ts` — 常见转换场景
-
-**涉及文件**：
-
-- `packages/shared/vitest.config.ts` — 新增
-- `packages/shared/src/__tests__/` — 新增测试文件
-- `vitest.workspace.ts` — 添加 shared 到工作区
-
----
-
-### 3.2 ✅ 补充前端关键路径测试
-
-**优先测试**：
-
-- `useDebouncedNoteSave` — 防抖、重试逻辑、卸载时保存
-- `NotesSidebar` — 搜索过滤、删除撤销流程
-- `NoteEditorPane` — 加载/错误/空状态
-
-**涉及文件**：
-
-- `apps/web/src/hooks/useDebouncedNoteSave.test.ts`
-- `apps/web/src/store/useNoteStore.test.ts`
+- 启动 dev server：`pnpm --filter web dev`
+- 修改 `packages/tokens/src` 下任意 token 值
+- 观察终端是否自动执行 `generate-css.ts`，浏览器是否自动热更新样式
 
 ---
 
-### 3.3 ✅ API 测试补全
+## Phase 5：状态管理重构（高复杂度，高收益）
 
-**缺失覆盖**：
+> 引入 `@tanstack/react-query`，将 `useNoteStore` 中的服务端状态逻辑迁出
 
-- 游标分页的各种路径（有 cursor + cursorId、仅 cursor、无 cursor）
-- `hasMore` 判断逻辑
-- rate limiter 行为
-- update 部分字段（只改 title / 只改 content / 都改）
+### 涉及文件
 
-**涉及文件**：
+#### [MODIFY] [package.json](file:///Users/afu/Dev/nicenote/apps/web/package.json)
 
-- `apps/api/src/services/note-service.test.ts`
-- `apps/api/src/index.test.ts`
+新增依赖：`@tanstack/react-query`
 
----
+#### [NEW] [useNotesQuery.ts](file:///Users/afu/Dev/nicenote/apps/web/src/hooks/useNotesQuery.ts)
 
-### 3.4 ✅ Turborepo 配置优化
+使用 `useInfiniteQuery` 封装笔记列表获取和分页：
 
-**现状**：无 `turbo.json`，Turborepo 使用默认配置，构建任务无法最优并行。
+- Query Key: `['notes']`
+- 自动管理 `isFetching`, `hasMore`, `fetchNextPage`
+- 替代 `useNoteStore` 中的 `fetchNotes`, `fetchMoreNotes`
 
-**方案**：
+#### [NEW] [useNoteDetail.ts](file:///Users/afu/Dev/nicenote/apps/web/src/hooks/useNoteDetail.ts)
 
-- 创建 `turbo.json`，定义 `build`、`lint`、`test` 任务依赖关系
-- `tokens#build` → `web#generate:css` → `web#build` 显式声明
+使用 `useQuery` + `enabled` 封装单条笔记详情加载：
 
-**涉及文件**：
+- Query Key: `['notes', id]`
+- 自动处理 abort（React Query 内置），替代手动 `AbortController` + sequence
+- 替代 `useNoteStore` 中的 `selectNote`
 
-- `turbo.json` — 新增
+#### [NEW] [useNoteMutations.ts](file:///Users/afu/Dev/nicenote/apps/web/src/hooks/useNoteMutations.ts)
 
----
+使用 `useMutation` + `onMutate` / `onError` / `onSettled` 封装 CRUD 操作：
 
-### 3.5 ✅ 可访问性改善
+- 乐观更新通过 `queryClient.setQueryData` 实现
+- 失败回滚通过 `onError` 中 `queryClient.setQueryData(context.previousData)` 实现
+- 替代 `useNoteStore` 中的 `createNote`, `saveNote`, `deleteNote`, `removeNoteOptimistic`, `restoreNote`
 
-| 项目                           | 方案                                                                       |
-| ------------------------------ | -------------------------------------------------------------------------- |
-| Toolbar `aria-label="toolbar"` | 改为 `aria-label="Formatting toolbar"`                                     |
-| Toolbar `Separator`            | `role="presentation"` → `role="separator"` + `aria-orientation="vertical"` |
-| `<title>` 不更新               | 选中笔记时 `document.title = noteTitle + ' - Nicenote'`                    |
-| 错误边界无焦点管理             | `componentDidUpdate` 后 `ref.current?.focus()`                             |
-| 搜索框无可见 label             | 添加 `aria-label` 属性                                                     |
+#### [MODIFY] [useNoteStore.ts](file:///Users/afu/Dev/nicenote/apps/web/src/store/useNoteStore.ts)
 
----
+大幅瘦身，仅保留纯客户端状态：
 
-### 3.6 ✅ 侧边栏 isOpen 状态持久化
+```typescript
+interface NoteStore {
+  selectedNoteId: string | null
+  selectNote: (id: string | null) => void
+}
+```
 
-**现状**：`useSidebarStore` 只持久化宽度，`isOpen` 每次刷新重置为 `true`。
+> 从约 270 行 → 约 20 行
 
-**方案**：
+#### [MODIFY] [main.tsx](file:///Users/afu/Dev/nicenote/apps/web/src/main.tsx)
 
-- 在 localStorage `nicenote-sidebar-width` 存储中增加 `isOpen` 字段
-- 或新增 `nicenote-sidebar-open` key
+包裹 `QueryClientProvider`
 
-**涉及文件**：
+#### [MODIFY] [App.tsx](file:///Users/afu/Dev/nicenote/apps/web/src/App.tsx)
 
-- `apps/web/src/store/useSidebarStore.ts`
+迁移到使用新的 hooks
 
----
+### 验证计划
 
-### 3.7 ✅ 添加 robots.txt 和 SEO 基础标签
-
-**方案**：
-
-- `apps/web/public/robots.txt` — `Disallow: /`（私人应用不需要索引）
-- `index.html` 添加 `<meta name="description">`
-
-**涉及文件**：
-
-- `apps/web/public/robots.txt`
-- `apps/web/index.html`
+- 运行 API 测试确保后端不受影响：`pnpm --filter api test`
+- 运行 Web 测试（如有）：`pnpm --filter web test`
+- 手动验证（需要请用户协助）：
+  1. 启动 `pnpm dev`
+  2. 创建、编辑、删除笔记，验证 CRUD 正常
+  3. 在 Network 面板中观察笔记列表接口是否有自动缓存/去重
+  4. 快速连续切换笔记，验证无竞态数据残留
 
 ---
 
-## 执行建议
+## 实施优先级与风险矩阵
 
-| 阶段        | 内容                                                  | 预计范围        |
-| ----------- | ----------------------------------------------------- | --------------- |
-| **Phase 1** | P0.2 分页 + P0.3 rate limiter + P1.1~1.2 乐观更新修复 | 功能正确性      |
-| **Phase 2** | P0.1 认证（需要设计讨论）                             | 安全基础        |
-| **Phase 3** | P1.4~1.5 CSP + 内容安全 + P2.1~2.2 性能               | 安全加固 + 性能 |
-| **Phase 4** | P2.3~2.6 架构清理                                     | 代码质量        |
-| **Phase 5** | P3.1~3.3 测试补全                                     | 质量保障        |
-| **Phase 6** | P3.4~3.7 DX + 可访问性 + SEO                          | 锦上添花        |
+| 阶段                   | 优先级 | 风险 | 预估工时 | 依赖                      |
+| ---------------------- | ------ | ---- | -------- | ------------------------- |
+| Phase 1: 统一错误处理  | 🔴 高  | 低   | 1h       | 无                        |
+| Phase 2: 限流替换      | 🟡 中  | 低   | 0.5h     | 无                        |
+| Phase 3: 编辑器性能    | 🟡 中  | 中   | 2h       | 无                        |
+| Phase 4: Tokens 热更新 | 🟢 低  | 低   | 0.5h     | 无                        |
+| Phase 5: 状态管理重构  | 🔴 高  | 高   | 4-6h     | 无（但建议 Phase 1 之后） |
 
-> 注：P0.1（认证）影响面最大，建议先确定认证方案（Cloudflare Access / JWT / OAuth）再动手。其余项目可并行推进。
+> [!TIP]
+> 建议按 **Phase 1 → 2 → 4 → 3 → 5** 的顺序执行：先做确定性高、改动小的基础设施优化，最后攻克最大的状态管理重构。
