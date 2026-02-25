@@ -1,6 +1,7 @@
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useQueryClient } from '@tanstack/react-query'
 import type { Locale } from 'date-fns'
 import { formatDistanceToNow } from 'date-fns'
 import { ArrowRightFromLine, Plus, Search, Trash2 } from 'lucide-react'
@@ -9,6 +10,14 @@ import { useShallow } from 'zustand/react/shallow'
 import type { NoteListItem as NoteListItemType } from '@nicenote/shared'
 
 import { useMinuteTicker } from '../hooks/useMinuteTicker'
+import {
+  getNoteFromListCache,
+  removeNoteFromListCache,
+  restoreNoteToListCache,
+  useCreateNote,
+  useDeleteNote,
+} from '../hooks/useNoteMutations'
+import { useNotesQuery } from '../hooks/useNotesQuery'
 import { WEB_ICON_MD_CLASS, WEB_ICON_SM_CLASS, WEB_ROW_WITH_ICON_CLASS } from '../lib/class-names'
 import { getDateLocale } from '../lib/date-locale'
 import { useNoteStore } from '../store/useNoteStore'
@@ -91,6 +100,7 @@ export function NotesSidebar({ isMobile, cancelPendingSave }: NotesSidebarProps)
   const { t, i18n } = useTranslation()
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
+  const queryClient = useQueryClient()
 
   const { isOpen, width, isResizing, toggle, open, setWidth, startResize, stopResize } =
     useSidebarStore(
@@ -106,37 +116,26 @@ export function NotesSidebar({ isMobile, cancelPendingSave }: NotesSidebarProps)
       }))
     )
 
+  // Note list from react-query
   const {
-    notes,
+    data: notesData,
     isFetching,
-    isCreating,
     error,
-    currentNoteId,
-    selectNote,
-    createNote,
-    deleteNote,
-    removeNoteOptimistic,
-    restoreNote,
-    hasMore,
-    isFetchingMore,
-    fetchMoreNotes,
-  } = useNoteStore(
-    useShallow((state) => ({
-      notes: state.notes,
-      isFetching: state.isFetching,
-      isCreating: state.isCreating,
-      error: state.error,
-      currentNoteId: state.currentNote?.id ?? null,
-      selectNote: state.selectNote,
-      createNote: state.createNote,
-      deleteNote: state.deleteNote,
-      removeNoteOptimistic: state.removeNoteOptimistic,
-      restoreNote: state.restoreNote,
-      hasMore: state.hasMore,
-      isFetchingMore: state.isFetchingMore,
-      fetchMoreNotes: state.fetchMoreNotes,
-    }))
-  )
+    hasNextPage: hasMore,
+    isFetchingNextPage: isFetchingMore,
+    fetchNextPage: fetchMoreNotes,
+  } = useNotesQuery()
+  const notes = useMemo(() => notesData?.pages.flatMap((p) => p.data) ?? [], [notesData])
+
+  // Note selection from store
+  const selectedNoteId = useNoteStore((s) => s.selectedNoteId)
+  const selectNote = useNoteStore((s) => s.selectNote)
+
+  // Mutations
+  const createMutation = useCreateNote()
+  const deleteMutation = useDeleteNote()
+  const isCreating = createMutation.isPending
+
   const addToast = useToastStore((state) => state.addToast)
 
   const dateLocale = useMemo(() => getDateLocale(i18n.language), [i18n.language])
@@ -144,14 +143,10 @@ export function NotesSidebar({ isMobile, cancelPendingSave }: NotesSidebarProps)
   const deleteLabel = t('sidebar.deleteNote', { title: '{{title}}' })
 
   const pendingDeleteTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
-  const notesRef = useRef(notes)
-  useEffect(() => {
-    notesRef.current = notes
-  }, [notes])
 
   const handleSelectNote = useCallback(
     (note: NoteListItemType) => {
-      void selectNote(note)
+      selectNote(note.id)
       if (isMobile) useSidebarStore.getState().close()
     },
     [selectNote, isMobile]
@@ -163,14 +158,16 @@ export function NotesSidebar({ isMobile, cancelPendingSave }: NotesSidebarProps)
     (id: string) => {
       cancelPendingSave(id)
 
-      const noteToDelete = notesRef.current.find((n) => n.id === id)
+      const noteToDelete = getNoteFromListCache(queryClient, id)
       if (!noteToDelete) return
 
-      removeNoteOptimistic(id)
+      // Optimistic remove
+      removeNoteFromListCache(queryClient, id)
+      if (selectedNoteId === id) selectNote(null)
 
       const deleteTimer = setTimeout(() => {
         pendingDeleteTimers.current.delete(id)
-        void deleteNote(id)
+        deleteMutation.mutate(id)
       }, DELETE_UNDO_TIMEOUT_MS)
 
       pendingDeleteTimers.current.set(id, deleteTimer)
@@ -185,12 +182,12 @@ export function NotesSidebar({ isMobile, cancelPendingSave }: NotesSidebarProps)
               clearTimeout(timer)
               pendingDeleteTimers.current.delete(id)
             }
-            restoreNote(noteToDelete)
+            restoreNoteToListCache(queryClient, noteToDelete)
           },
         },
       })
     },
-    [cancelPendingSave, deleteNote, addToast, t, removeNoteOptimistic, restoreNote]
+    [cancelPendingSave, queryClient, selectedNoteId, selectNote, deleteMutation, addToast, t]
   )
 
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -264,6 +261,9 @@ export function NotesSidebar({ isMobile, cancelPendingSave }: NotesSidebarProps)
     }
   }, [isResizing])
 
+  const isInitialLoading = isFetching && notes.length === 0
+  const errorMessage = error ? (error as Error).message : null
+
   const sidebarContent = (
     <>
       <div className="flex flex-col gap-4 p-4">
@@ -283,7 +283,7 @@ export function NotesSidebar({ isMobile, cancelPendingSave }: NotesSidebarProps)
           <div className={WEB_ROW_WITH_ICON_CLASS}>
             <SettingsDropdown />
             <button
-              onClick={() => void createNote()}
+              onClick={() => createMutation.mutate()}
               disabled={isCreating}
               aria-label={t('sidebar.newNote')}
               className="rounded-md bg-primary p-2 text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
@@ -308,7 +308,7 @@ export function NotesSidebar({ isMobile, cancelPendingSave }: NotesSidebarProps)
       </div>
 
       <ul role="list" className="flex-1 space-y-1 overflow-y-auto p-2">
-        {isFetching && notes.length === 0
+        {isInitialLoading
           ? Array.from({ length: 6 }).map((_, i) => (
               <li key={i} className="animate-pulse space-y-2 rounded-md p-3">
                 <div className="h-4 w-2/3 rounded bg-muted" />
@@ -320,7 +320,7 @@ export function NotesSidebar({ isMobile, cancelPendingSave }: NotesSidebarProps)
               <NoteListItem
                 key={note.id}
                 note={note}
-                isActive={currentNoteId === note.id}
+                isActive={selectedNoteId === note.id}
                 onSelect={handleSelectNote}
                 onDelete={handleDeleteWithUndo}
                 untitledLabel={untitledLabel}
@@ -335,12 +335,12 @@ export function NotesSidebar({ isMobile, cancelPendingSave }: NotesSidebarProps)
             <div className="h-3 w-1/2 rounded bg-muted" />
           </li>
         )}
-        {!isFetching && error && notes.length === 0 && (
+        {!isFetching && errorMessage && notes.length === 0 && (
           <li className="py-12 text-center text-destructive">
-            <p className="text-sm">{error}</p>
+            <p className="text-sm">{errorMessage}</p>
           </li>
         )}
-        {!isFetching && !error && filteredNotes.length === 0 && (
+        {!isFetching && !errorMessage && filteredNotes.length === 0 && (
           <li className="py-12 text-center text-muted-foreground">
             <p className="text-sm">{t('sidebar.noNotesFound')}</p>
           </li>

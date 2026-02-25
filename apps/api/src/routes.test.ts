@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { describe, expect, it, vi } from 'vitest'
 
+import { handleAppError } from './app-error'
 import { registerNoteRoutes } from './routes'
 
 function createNote() {
@@ -23,6 +24,21 @@ function createListItem() {
   }
 }
 
+function createTestApp(
+  createService: () => {
+    list: ReturnType<typeof vi.fn>
+    getById: ReturnType<typeof vi.fn>
+    create: ReturnType<typeof vi.fn>
+    update: ReturnType<typeof vi.fn>
+    remove: ReturnType<typeof vi.fn>
+  }
+) {
+  const app = new Hono<{ Bindings: object }>()
+  app.onError(handleAppError)
+  registerNoteRoutes(app, createService)
+  return app
+}
+
 describe('registerNoteRoutes', () => {
   it('handles list, get, create, patch, delete flows', async () => {
     const service = {
@@ -33,7 +49,7 @@ describe('registerNoteRoutes', () => {
       remove: vi.fn(async () => true),
     }
 
-    const app = registerNoteRoutes(new Hono<{ Bindings: object }>(), () => service)
+    const app = createTestApp(() => service)
 
     const listRes = await app.request('/notes')
     expect(listRes.status).toBe(200)
@@ -73,7 +89,7 @@ describe('registerNoteRoutes', () => {
       remove: vi.fn(async () => false),
     }
 
-    const app = registerNoteRoutes(new Hono<{ Bindings: object }>(), () => service)
+    const app = createTestApp(() => service)
 
     const getRes = await app.request('/notes/not-found')
     expect(getRes.status).toBe(404)
@@ -86,6 +102,25 @@ describe('registerNoteRoutes', () => {
     expect(patchRes.status).toBe(404)
   })
 
+  it('returns i18n error message for AppError', async () => {
+    const service = {
+      list: vi.fn(async () => ({ data: [], nextCursor: null, nextCursorId: null })),
+      getById: vi.fn(async () => null),
+      create: vi.fn(async () => createNote()),
+      update: vi.fn(async () => null),
+      remove: vi.fn(async () => false),
+    }
+
+    const app = createTestApp(() => service)
+
+    const res = await app.request('/notes/not-found', {
+      headers: { 'accept-language': 'zh-CN,zh;q=0.9' },
+    })
+    expect(res.status).toBe(404)
+    const body = await res.json()
+    expect(body).toEqual({ error: '未找到' })
+  })
+
   it('rejects invalid request bodies by route validators', async () => {
     const service = {
       list: vi.fn(async () => ({ data: [], nextCursor: null, nextCursorId: null })),
@@ -95,7 +130,7 @@ describe('registerNoteRoutes', () => {
       remove: vi.fn(async () => false),
     }
 
-    const app = registerNoteRoutes(new Hono<{ Bindings: object }>(), () => service)
+    const app = createTestApp(() => service)
 
     const invalidPatchRes = await app.request('/notes/n1', {
       method: 'PATCH',

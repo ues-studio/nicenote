@@ -23,6 +23,7 @@ import { Separator, Toolbar, ToolbarGroup } from '@nicenote/ui'
 
 import { isNoteCommandId, type NoteCommandId, runNoteCommand } from '../core/commands'
 import type { EditorToolbarLabels } from '../core/labels'
+import { type EditorSnapshotStore, useEditorSnapshot } from '../core/snapshot-store'
 import type { NoteEditorStateSnapshot } from '../core/state'
 import {
   HEADING_MENU_ITEMS,
@@ -37,7 +38,7 @@ import { LinkToolbarButton } from './link-toolbar-button'
 
 interface MinimalToolbarProps {
   editor: Editor | null
-  snapshot: NoteEditorStateSnapshot
+  snapshotStore: EditorSnapshotStore
   isSourceMode: boolean
   isMobile: boolean
   onToggleSourceMode: () => void
@@ -227,13 +228,14 @@ function getToolbarItemRenderState(
 
 export function MinimalToolbar({
   editor,
-  snapshot,
+  snapshotStore,
   isSourceMode,
   isMobile,
   onToggleSourceMode,
   toolbarLabels,
   translateValidationError,
 }: MinimalToolbarProps) {
+  const snapshot = useEditorSnapshot(snapshotStore)
   return (
     <Toolbar variant="floating" className="nn-editor-toolbar">
       {NOTE_TOOLBAR_GROUPS.map((group, groupIndex) => (

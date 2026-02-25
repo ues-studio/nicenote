@@ -13,11 +13,8 @@ import {
   readEditorMarkdown,
   writeEditorMarkdown,
 } from '../core/serialization'
-import {
-  createEmptyEditorStateSnapshot,
-  getNoteEditorStateSnapshot,
-  type NoteEditorStateSnapshot,
-} from '../core/state'
+import { createEditorSnapshotStore } from '../core/snapshot-store'
+import { getNoteEditorStateSnapshot } from '../core/state'
 import { NOTE_BEHAVIOR_POLICY } from '../preset-note/behavior-policy'
 import { createMinimalExtensions } from '../preset-note/minimal-extensions'
 import { isToggleSourceModeShortcut } from '../preset-note/shortcuts'
@@ -80,9 +77,7 @@ export function NicenoteEditor({
   const lastEmittedMarkdown = useRef(initialMarkdown)
 
   const [sourceValue, setSourceValue] = useState(initialMarkdown)
-  const [snapshot, setSnapshot] = useState<NoteEditorStateSnapshot>(
-    createEmptyEditorStateSnapshot()
-  )
+  const snapshotStore = useMemo(() => createEditorSnapshotStore(), [])
 
   const { isSourceMode, setSourceMode } = useSourceModeState({
     isSourceMode: controlledSourceMode,
@@ -98,10 +93,13 @@ export function NicenoteEditor({
     [placeholderText]
   )
 
-  const updateSnapshot = useCallback((nextEditor: Editor | null) => {
-    if (!nextEditor) return
-    setSnapshot(getNoteEditorStateSnapshot(nextEditor))
-  }, [])
+  const updateSnapshot = useCallback(
+    (nextEditor: Editor | null) => {
+      if (!nextEditor) return
+      snapshotStore.set(getNoteEditorStateSnapshot(nextEditor))
+    },
+    [snapshotStore]
+  )
 
   const editor = useEditor({
     immediatelyRender: NOTE_BEHAVIOR_POLICY.immediatelyRender,
@@ -196,7 +194,7 @@ export function NicenoteEditor({
       <EditorContext.Provider value={{ editor }}>
         <MinimalToolbar
           editor={editor}
-          snapshot={snapshot}
+          snapshotStore={snapshotStore}
           isSourceMode={isSourceMode}
           isMobile={isMobile}
           onToggleSourceMode={toggleSourceMode}

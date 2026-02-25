@@ -7,6 +7,7 @@ import { EditorErrorBoundary } from './components/ErrorBoundary'
 import { NotesSidebar } from './components/NotesSidebar'
 import { Toasts } from './components/Toasts'
 import { useDebouncedNoteSave } from './hooks/useDebouncedNoteSave'
+import { useNoteDetail } from './hooks/useNoteDetail'
 import { useNoteStore } from './store/useNoteStore'
 import { useSidebarStore } from './store/useSidebarStore'
 
@@ -16,19 +17,14 @@ const NoteEditorPane = lazy(() =>
 
 export default function App() {
   const { t } = useTranslation()
-  const fetchNotes = useNoteStore((state) => state.fetchNotes)
-  const saveNote = useNoteStore((state) => state.saveNote)
-  const currentNote = useNoteStore((state) => state.currentNote)
-  const { scheduleSave, cancelPendingSave, saveStatus } = useDebouncedNoteSave({ saveNote })
+  const selectedNoteId = useNoteStore((s) => s.selectedNoteId)
+  const { data: currentNote } = useNoteDetail(selectedNoteId)
+  const { scheduleSave, cancelPendingSave, saveStatus } = useDebouncedNoteSave()
 
   const isMobile = useIsBreakpoint('max', 768)
   const isOpen = useSidebarStore((s) => s.isOpen)
   const width = useSidebarStore((s) => s.width)
   const closeSidebar = useSidebarStore((s) => s.close)
-
-  useEffect(() => {
-    fetchNotes()
-  }, [fetchNotes])
 
   useEffect(() => {
     document.title = currentNote

@@ -1,21 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { useQueryClient } from '@tanstack/react-query'
+
 import { debounce, type NoteSelect, type NoteUpdateInput } from '@nicenote/shared'
 
 import i18n from '../i18n'
-import { useNoteStore } from '../store/useNoteStore'
 import { useToastStore } from '../store/useToastStore'
+
+import { noteDetailQueryKey } from './useNoteDetail'
+import { getNoteFromListCache, saveNoteToServer, updateNoteInListCache } from './useNoteMutations'
 
 export const MAX_RETRIES = 3
 export const RETRY_DELAYS = [1000, 2000, 4000]
 const SAVED_DISPLAY_MS = 2000
 
 export type SaveStatus = 'idle' | 'unsaved' | 'saving' | 'saved'
-
-interface UseDebouncedNoteSaveOptions {
-  delayMs?: number
-  saveNote: (id: string, updates: NoteUpdateInput) => Promise<NoteSelect>
-}
 
 type PendingSaveEntry = {
   updates: NoteUpdateInput
@@ -24,95 +23,93 @@ type PendingSaveEntry = {
 }
 
 export async function attemptSave(
-  saveNote: (id: string, updates: NoteUpdateInput) => Promise<NoteSelect>,
   id: string,
   updates: NoteUpdateInput
-): Promise<boolean> {
+): Promise<NoteSelect | null> {
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
-      await saveNote(id, updates)
-      return true
+      return await saveNoteToServer(id, updates)
     } catch {
       if (attempt < MAX_RETRIES - 1) {
         await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS[attempt]))
       }
     }
   }
-  return false
+  return null
 }
 
-export function useDebouncedNoteSave({ saveNote, delayMs = 1000 }: UseDebouncedNoteSaveOptions) {
+export function useDebouncedNoteSave({ delayMs = 1000 }: { delayMs?: number } = {}) {
+  const queryClient = useQueryClient()
   const pendingSavesRef = useRef<Map<string, PendingSaveEntry>>(new Map())
-  const saveNoteRef = useRef(saveNote)
   const addToast = useToastStore((state) => state.addToast)
   const addToastRef = useRef(addToast)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    saveNoteRef.current = saveNote
-  }, [saveNote])
-
-  useEffect(() => {
     addToastRef.current = addToast
   }, [addToast])
 
-  const flushEntry = useCallback(async (id: string) => {
-    const pending = pendingSavesRef.current.get(id)
-    if (!pending || pending.saving) return
+  const flushEntry = useCallback(
+    async (id: string) => {
+      const pending = pendingSavesRef.current.get(id)
+      if (!pending || pending.saving) return
 
-    const updates = pending.updates
-    if (Object.keys(updates).length === 0) {
-      pendingSavesRef.current.delete(id)
-      return
-    }
-
-    // Snapshot before save — used for rollback if all retries fail
-    const storeState = useNoteStore.getState()
-    const snapshotListItem = storeState.notes.find((n) => n.id === id)
-    const snapshotCurrentNote =
-      storeState.currentNote?.id === id ? { ...storeState.currentNote } : null
-
-    pending.saving = true
-    pending.updates = {}
-    setSaveStatus('saving')
-
-    const success = await attemptSave(saveNoteRef.current, id, updates)
-
-    if (success) {
-      const current = pendingSavesRef.current.get(id)
-      if (current && Object.keys(current.updates).length > 0) {
-        // New updates accumulated during save — re-trigger debounced save
-        current.saving = false
-        setSaveStatus('unsaved')
-        current.debouncedSave()
-      } else if (current) {
+      const updates = pending.updates
+      if (Object.keys(updates).length === 0) {
         pendingSavesRef.current.delete(id)
-        if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
-        setSaveStatus('saved')
-        savedTimerRef.current = setTimeout(() => setSaveStatus('idle'), SAVED_DISPLAY_MS)
+        return
       }
-    } else {
-      // All retries exhausted — roll back optimistic state to pre-save snapshot
-      useNoteStore.setState((state) => ({
-        notes: snapshotListItem
-          ? state.notes.map((n) => (n.id === id ? snapshotListItem : n))
-          : state.notes,
-        currentNote:
-          snapshotCurrentNote !== null && state.currentNote?.id === id
-            ? snapshotCurrentNote
-            : state.currentNote,
-      }))
 
-      const current = pendingSavesRef.current.get(id)
-      if (current) {
-        current.updates = { ...updates, ...current.updates }
-        current.saving = false
+      // Snapshot before save — used for rollback if all retries fail
+      const detailSnapshot = queryClient.getQueryData<NoteSelect>(noteDetailQueryKey(id))
+      const listItemSnapshot = getNoteFromListCache(queryClient, id)
+
+      pending.saving = true
+      pending.updates = {}
+      setSaveStatus('saving')
+
+      const saved = await attemptSave(id, updates)
+
+      if (saved) {
+        // Sync server timestamps back into caches
+        const serverFields = { updatedAt: saved.updatedAt, createdAt: saved.createdAt }
+        queryClient.setQueryData<NoteSelect>(noteDetailQueryKey(id), (old) =>
+          old ? { ...old, ...serverFields } : old
+        )
+        updateNoteInListCache(queryClient, id, (note) => ({ ...note, ...serverFields }))
+
+        const current = pendingSavesRef.current.get(id)
+        if (current && Object.keys(current.updates).length > 0) {
+          current.saving = false
+          setSaveStatus('unsaved')
+          current.debouncedSave()
+        } else if (current) {
+          pendingSavesRef.current.delete(id)
+          if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+          setSaveStatus('saved')
+          savedTimerRef.current = setTimeout(() => setSaveStatus('idle'), SAVED_DISPLAY_MS)
+        }
+      } else {
+        // All retries exhausted — roll back to pre-save snapshot
+        if (detailSnapshot) {
+          queryClient.setQueryData(noteDetailQueryKey(id), detailSnapshot)
+        }
+        if (listItemSnapshot) {
+          updateNoteInListCache(queryClient, id, () => listItemSnapshot)
+        }
+
+        const current = pendingSavesRef.current.get(id)
+        if (current) {
+          current.updates = { ...updates, ...current.updates }
+          current.saving = false
+        }
+        setSaveStatus('unsaved')
+        addToastRef.current(i18n.t('toast.failedToSave'))
       }
-      setSaveStatus('unsaved')
-      addToastRef.current(i18n.t('toast.failedToSave'))
-    }
-  }, [])
+    },
+    [queryClient]
+  )
 
   const cancelPendingSave = useCallback((id: string) => {
     const pending = pendingSavesRef.current.get(id)
@@ -158,7 +155,7 @@ export function useDebouncedNoteSave({ saveNote, delayMs = 1000 }: UseDebouncedN
       for (const [id, pending] of pendingSaves.entries()) {
         pending.debouncedSave.cancel()
         if (Object.keys(pending.updates).length === 0) continue
-        void attemptSave(saveNoteRef.current, id, pending.updates)
+        void attemptSave(id, pending.updates)
       }
 
       pendingSaves.clear()

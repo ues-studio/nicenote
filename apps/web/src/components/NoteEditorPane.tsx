@@ -1,9 +1,9 @@
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useQueryClient } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
 import { FileText, Plus } from 'lucide-react'
-import { useShallow } from 'zustand/react/shallow'
 
 import type { EditorLabels } from '@nicenote/editor'
 import { NicenoteEditor } from '@nicenote/editor'
@@ -11,6 +11,8 @@ import type { NoteUpdateInput } from '@nicenote/shared'
 
 import type { SaveStatus } from '../hooks/useDebouncedNoteSave'
 import { useMinuteTicker } from '../hooks/useMinuteTicker'
+import { useNoteDetail } from '../hooks/useNoteDetail'
+import { updateNoteLocal, useCreateNote } from '../hooks/useNoteMutations'
 import { WEB_ICON_SM_CLASS } from '../lib/class-names'
 import { getDateLocale } from '../lib/date-locale'
 import { useNoteStore } from '../store/useNoteStore'
@@ -25,13 +27,10 @@ interface NoteEditorPaneProps {
 export function NoteEditorPane({ scheduleSave, saveStatus, inert, isMobile }: NoteEditorPaneProps) {
   const { t, i18n } = useTranslation()
   const tick = useMinuteTicker()
-  const { currentNote, createNote, updateNoteLocal } = useNoteStore(
-    useShallow((state) => ({
-      currentNote: state.currentNote,
-      createNote: state.createNote,
-      updateNoteLocal: state.updateNoteLocal,
-    }))
-  )
+  const queryClient = useQueryClient()
+  const selectedNoteId = useNoteStore((s) => s.selectedNoteId)
+  const { data: currentNote } = useNoteDetail(selectedNoteId)
+  const createMutation = useCreateNote()
 
   const saveStatusLabel: Record<SaveStatus, string | null> = useMemo(
     () => ({
@@ -81,19 +80,19 @@ export function NoteEditorPane({ scheduleSave, saveStatus, inert, isMobile }: No
     (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!currentNote) return
       const newTitle = e.target.value
-      updateNoteLocal(currentNote.id, { title: newTitle })
+      updateNoteLocal(queryClient, currentNote.id, { title: newTitle })
       scheduleSave(currentNote.id, { title: newTitle })
     },
-    [currentNote, updateNoteLocal, scheduleSave]
+    [currentNote, queryClient, scheduleSave]
   )
 
   const handleContentChange = useCallback(
     (newContent: string) => {
       if (!currentNote) return
-      updateNoteLocal(currentNote.id, { content: newContent })
+      updateNoteLocal(queryClient, currentNote.id, { content: newContent })
       scheduleSave(currentNote.id, { content: newContent })
     },
-    [currentNote, updateNoteLocal, scheduleSave]
+    [currentNote, queryClient, scheduleSave]
   )
 
   const updatedAt = currentNote?.updatedAt ?? null
@@ -145,9 +144,10 @@ export function NoteEditorPane({ scheduleSave, saveStatus, inert, isMobile }: No
           <p className="text-lg font-medium">{t('editor.selectNote')}</p>
           <p className="text-sm opacity-70">{t('editor.selectNoteHint')}</p>
           <button
-            onClick={() => void createNote()}
+            onClick={() => createMutation.mutate()}
+            disabled={createMutation.isPending}
             aria-label={t('editor.createNewNoteLabel')}
-            className="mt-6 flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-primary-foreground transition-colors hover:bg-primary/90"
+            className="mt-6 flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
             <Plus className={WEB_ICON_SM_CLASS} />
             {t('editor.createNewNote')}
