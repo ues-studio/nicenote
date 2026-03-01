@@ -79,9 +79,9 @@ const en = {
     theme: 'Theme',
     light: 'Light',
     dark: 'Dark',
+    system: 'System',
     language: 'Language',
-    english: 'English',
-    chinese: '\u4e2d\u6587',
+    searchLanguage: 'Search language',
   },
   editorContent: {
     editorPlaceholder: 'Start writing your thoughts',
@@ -139,6 +139,11 @@ const en = {
   export: {
     exportNote: 'Export as Markdown',
     exportAll: 'Export All Notes',
+  },
+  nav: {
+    allNotes: 'All Notes',
+    allTags: 'All Tags',
+    noTags: 'No tags yet',
   },
 } as const
 

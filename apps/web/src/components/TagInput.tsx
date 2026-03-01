@@ -2,23 +2,32 @@ import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Plus, X } from 'lucide-react'
+import { useShallow } from 'zustand/react/shallow'
 
 import type { TagSelect } from '@nicenote/shared'
 
 import { WEB_ICON_SM_CLASS } from '../lib/class-names'
+import { useNoteStore } from '../store/useNoteStore'
 
 interface TagInputProps {
   noteId: string
   noteTags: TagSelect[]
 }
 
-export const TagInput = memo(function TagInput({ noteId: _noteId, noteTags }: TagInputProps) {
+export const TagInput = memo(function TagInput({ noteId, noteTags }: TagInputProps) {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const allTags = useMemo<TagSelect[]>(() => [], [])
+  const { allTags, createTag, addTagToNote, removeTagFromNote } = useNoteStore(
+    useShallow((s) => ({
+      allTags: s.tags,
+      createTag: s.createTag,
+      addTagToNote: s.addTagToNote,
+      removeTagFromNote: s.removeTagFromNote,
+    }))
+  )
 
   const noteTagIds = useMemo(() => new Set(noteTags.map((t) => t.id)), [noteTags])
 
@@ -34,17 +43,30 @@ export const TagInput = memo(function TagInput({ noteId: _noteId, noteTags }: Ta
     return !allTags.some((t) => t.name.toLowerCase() === search.toLowerCase().trim())
   }, [allTags, search])
 
-  const handleAddExisting = useCallback((_tagId: string) => {
+  const handleAddExisting = useCallback(
+    (tagId: string) => {
+      addTagToNote(noteId, tagId)
+      setSearch('')
+      setIsOpen(false)
+    },
+    [noteId, addTagToNote]
+  )
+
+  const handleCreateAndAdd = useCallback(() => {
+    const name = search.trim()
+    if (!name) return
+    const tag = createTag(name)
+    addTagToNote(noteId, tag.id)
     setSearch('')
     setIsOpen(false)
-  }, [])
+  }, [search, noteId, createTag, addTagToNote])
 
-  const handleCreateAndAdd = useCallback(async () => {
-    setSearch('')
-    setIsOpen(false)
-  }, [])
-
-  const handleRemove = useCallback((_tagId: string) => {}, [])
+  const handleRemove = useCallback(
+    (tagId: string) => {
+      removeTagFromNote(noteId, tagId)
+    },
+    [noteId, removeTagFromNote]
+  )
 
   const handleOpen = useCallback(() => {
     setIsOpen(true)
@@ -78,7 +100,7 @@ export const TagInput = memo(function TagInput({ noteId: _noteId, noteTags }: Ta
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onBlur={() => {
-              // Delay to allow click on dropdown items
+              // 延迟关闭，允许点击下拉列表项
               setTimeout(() => setIsOpen(false), 200)
             }}
             onKeyDown={(e) => {
@@ -92,7 +114,7 @@ export const TagInput = memo(function TagInput({ noteId: _noteId, noteTags }: Ta
               }
             }}
             placeholder={t('tag.searchOrCreate')}
-            className="w-36 rounded-md border border-border bg-background px-2 py-0.5 text-xs outline-none focus:ring-1 focus:ring-primary"
+            className="w-36 rounded-md border border-border bg-background px-2 py-0.5 text-xs outline-none"
           />
           {(filteredTags.length > 0 || showCreateOption) && (
             <div className="absolute top-full left-0 z-50 mt-1 max-h-40 w-48 overflow-y-auto rounded-md border border-border bg-popover shadow-md">

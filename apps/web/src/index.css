@@ -18,7 +18,7 @@
   input:focus,
   textarea:focus,
   select:focus {
-    @apply focus:ring-1 focus:ring-ring focus:outline-none;
+    @apply focus:outline-none;
   }
 
   body {

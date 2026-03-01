@@ -22,7 +22,11 @@ function SearchDialogInner({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const debouncedQuery = useDebouncedValue(query, 300)
-  const results = useMemo<NoteSearchResult[]>(() => [], [])
+  const search = useNoteStore((s) => s.search)
+  const results = useMemo<NoteSearchResult[]>(
+    () => (debouncedQuery.length > 0 ? search(debouncedQuery) : []),
+    [debouncedQuery, search]
+  )
   const isFetching = false
   const inputRef = useRef<HTMLInputElement>(null)
   const [selectedIndex, setSelectedIndex] = useState(0)

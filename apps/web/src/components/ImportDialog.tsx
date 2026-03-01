@@ -5,6 +5,7 @@ import { FileUp, Upload, X } from 'lucide-react'
 
 import { WEB_ICON_SM_CLASS } from '../lib/class-names'
 import { type ParsedNote, parseMarkdownFile } from '../lib/import'
+import { useNoteStore } from '../store/useNoteStore'
 
 interface ImportDialogProps {
   open: boolean
@@ -64,15 +65,17 @@ function ImportDialogInner({ onClose }: { onClose: () => void }) {
     setFiles((prev) => prev.filter((_, i) => i !== index))
   }, [])
 
+  const importNotes = useNoteStore((s) => s.importNotes)
+
   const handleImportAll = useCallback(async () => {
     setImporting(true)
     try {
-      // TODO: 接入新数据源后实现导入逻辑
+      importNotes(files)
       onClose()
     } finally {
       setImporting(false)
     }
-  }, [onClose])
+  }, [files, importNotes, onClose])
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">

@@ -82,9 +82,9 @@ const zh = {
     theme: '\u4e3b\u9898',
     light: '\u6d45\u8272',
     dark: '\u6df1\u8272',
+    system: '\u8ddf\u968f\u7cfb\u7edf',
     language: '\u8bed\u8a00',
-    english: 'English',
-    chinese: '\u4e2d\u6587',
+    searchLanguage: '\u641c\u7d22\u8bed\u8a00',
   },
   editorContent: {
     editorPlaceholder: '\u5f00\u59cb\u8bb0\u5f55\u4f60\u7684\u60f3\u6cd5',
@@ -142,6 +142,11 @@ const zh = {
   export: {
     exportNote: '\u5bfc\u51fa\u4e3a Markdown',
     exportAll: '\u5bfc\u51fa\u5168\u90e8\u7b14\u8bb0',
+  },
+  nav: {
+    allNotes: '\u6240\u6709\u7b14\u8bb0',
+    allTags: '\u6240\u6709\u6807\u7b7e',
+    noTags: '\u6682\u65e0\u6807\u7b7e',
   },
 }
 

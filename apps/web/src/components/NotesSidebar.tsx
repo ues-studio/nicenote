@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import type { Locale } from 'date-fns'
 import { formatDistanceToNow } from 'date-fns'
-import { ArrowRightFromLine, Plus, Search, Trash2 } from 'lucide-react'
+import { ArrowRightFromLine, FileText, Plus, Search, Tag, Trash2, X } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 
 import type { NoteListItem as NoteListItemType } from '@nicenote/shared'
@@ -11,7 +11,7 @@ import type { NoteListItem as NoteListItemType } from '@nicenote/shared'
 import { useMinuteTicker } from '../hooks/useMinuteTicker'
 import { WEB_ICON_MD_CLASS, WEB_ICON_SM_CLASS, WEB_ROW_WITH_ICON_CLASS } from '../lib/class-names'
 import { getDateLocale } from '../lib/date-locale'
-import { useNoteStore } from '../store/useNoteStore'
+import { selectNoteList, useNoteStore } from '../store/useNoteStore'
 import { useSidebarStore } from '../store/useSidebarStore'
 
 import { SettingsDropdown } from './SettingsDropdown'
@@ -87,6 +87,8 @@ const NoteListItem = memo(function NoteListItem({
   )
 })
 
+type NavView = 'notes' | 'tags'
+
 export function NotesSidebar({
   isMobile,
   onShowShortcuts,
@@ -96,6 +98,8 @@ export function NotesSidebar({
   const { t, i18n } = useTranslation()
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
+  const [navView, setNavView] = useState<NavView>('notes')
+  const [selectedTagId, setSelectedTagId] = useState<string | null>(null)
 
   const { isOpen, width, isResizing, toggle, open, setWidth, startResize, stopResize } =
     useSidebarStore(
@@ -111,11 +115,20 @@ export function NotesSidebar({
       }))
     )
 
-  // 暂无数据源
-  const notes = useMemo<NoteListItemType[]>(() => [], [])
+  const { rawNotes, selectedNoteId, tags, noteTags, selectNote, createNote, deleteNote } =
+    useNoteStore(
+      useShallow((s) => ({
+        rawNotes: s.notes,
+        selectedNoteId: s.selectedNoteId,
+        tags: s.tags,
+        noteTags: s.noteTags,
+        selectNote: s.selectNote,
+        createNote: s.createNote,
+        deleteNote: s.deleteNote,
+      }))
+    )
 
-  const selectedNoteId = useNoteStore((s) => s.selectedNoteId)
-  const selectNote = useNoteStore((s) => s.selectNote)
+  const notes = useMemo<NoteListItemType[]>(() => selectNoteList(rawNotes), [rawNotes])
 
   const dateLocale = useMemo(() => getDateLocale(i18n.language), [i18n.language])
   const untitledLabel = t('sidebar.untitled')
@@ -129,18 +142,41 @@ export function NotesSidebar({
     [selectNote, isMobile]
   )
 
-  const handleDeleteNote = useCallback((_id: string) => {
-    // TODO: 接入新数据源后实现删除逻辑
-  }, [])
+  const handleDeleteNote = useCallback(
+    (id: string) => {
+      deleteNote(id)
+    },
+    [deleteNote]
+  )
 
   const handleCreateNote = useCallback(() => {
-    // TODO: 接入新数据源后实现创建笔记逻辑
+    createNote()
+    if (isMobile) useSidebarStore.getState().close()
+  }, [createNote, isMobile])
+
+  // 点击标签：切换到笔记视图并按该标签过滤
+  const handleTagClick = useCallback((tagId: string) => {
+    setSelectedTagId(tagId)
+    setNavView('notes')
+  }, [])
+
+  // 切换到"所有笔记"：清除标签过滤
+  const handleNavNotes = useCallback(() => {
+    setNavView('notes')
+    setSelectedTagId(null)
   }, [])
 
   const filteredNotes = useMemo(() => {
+    let result = notes
+    if (selectedTagId) {
+      result = result.filter((note) => (noteTags[note.id] ?? []).includes(selectedTagId))
+    }
     const normalizedSearch = deferredSearch.toLowerCase()
-    return notes.filter((note) => note.title.toLowerCase().includes(normalizedSearch))
-  }, [deferredSearch, notes])
+    if (normalizedSearch) {
+      result = result.filter((note) => note.title.toLowerCase().includes(normalizedSearch))
+    }
+    return result
+  }, [notes, deferredSearch, selectedTagId, noteTags])
 
   // 拖拽调整宽度
   const handleResizePointerDown = useCallback(
@@ -165,37 +201,40 @@ export function NotesSidebar({
     stopResize()
   }, [isResizing, stopResize])
 
-  const sidebarContent = (
+  const selectedTag = selectedTagId ? (tags.find((tag) => tag.id === selectedTagId) ?? null) : null
+
+  // 左导航栏
+  const leftNav = (
+    <nav className="flex w-20 shrink-0 flex-col gap-0.5 border-r border-border px-1.5 py-2">
+      <button
+        onClick={handleNavNotes}
+        className={`flex flex-col items-center gap-1 rounded-md px-1 py-2.5 text-xs transition-colors ${
+          navView === 'notes'
+            ? 'bg-accent text-foreground'
+            : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+        }`}
+      >
+        <FileText className={WEB_ICON_SM_CLASS} />
+        <span className="text-center leading-tight">{t('nav.allNotes')}</span>
+      </button>
+      <button
+        onClick={() => setNavView('tags')}
+        className={`flex flex-col items-center gap-1 rounded-md px-1 py-2.5 text-xs transition-colors ${
+          navView === 'tags'
+            ? 'bg-accent text-foreground'
+            : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+        }`}
+      >
+        <Tag className={WEB_ICON_SM_CLASS} />
+        <span className="text-center leading-tight">{t('nav.allTags')}</span>
+      </button>
+    </nav>
+  )
+
+  // 笔记列表视图
+  const notesPanel = (
     <>
-      <div className="flex flex-col gap-4 p-4">
-        <div className="flex items-center justify-between">
-          <div className={WEB_ROW_WITH_ICON_CLASS}>
-            <button
-              onClick={toggle}
-              aria-label={isOpen ? t('sidebar.closeSidebar') : t('sidebar.openSidebar')}
-              className="rounded-md p-1.5 transition-colors outline-none hover:bg-accent"
-            >
-              <ArrowRightFromLine
-                className={`${WEB_ICON_MD_CLASS} transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
-              />
-            </button>
-            <h1 className="text-xl font-semibold">Nicenote</h1>
-          </div>
-          <div className={WEB_ROW_WITH_ICON_CLASS}>
-            <SettingsDropdown
-              {...(onShowShortcuts ? { onShowShortcuts } : {})}
-              {...(onExportAll ? { onExportAll } : {})}
-              {...(onImport ? { onImport } : {})}
-            />
-            <button
-              onClick={handleCreateNote}
-              aria-label={t('sidebar.newNote')}
-              className="rounded-md bg-primary p-2 text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-            >
-              <Plus className={WEB_ICON_SM_CLASS} />
-            </button>
-          </div>
-        </div>
+      <div className="shrink-0 px-2 pt-2 pb-1">
         <div className="relative">
           <Search
             className={`absolute top-2.5 left-2.5 ${WEB_ICON_SM_CLASS} text-muted-foreground`}
@@ -209,6 +248,17 @@ export function NotesSidebar({
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
+        {/* 标签过滤指示器 */}
+        {selectedTag && (
+          <button
+            onClick={() => setSelectedTagId(null)}
+            className="mt-1.5 flex items-center gap-1 rounded-md bg-accent px-2 py-1 text-xs text-foreground transition-colors hover:bg-accent/70"
+          >
+            <Tag className="h-3 w-3" />
+            <span className="max-w-20 truncate">{selectedTag.name}</span>
+            <X className="h-3 w-3 shrink-0" />
+          </button>
+        )}
       </div>
 
       <ul role="list" className="flex-1 space-y-1 overflow-y-auto p-2">
@@ -230,6 +280,70 @@ export function NotesSidebar({
           </li>
         )}
       </ul>
+    </>
+  )
+
+  // 标签列表视图
+  const tagsPanel = (
+    <ul role="list" className="flex-1 space-y-1 overflow-y-auto p-2">
+      {tags.map((tag) => (
+        <li key={tag.id} role="listitem">
+          <button
+            onClick={() => handleTagClick(tag.id)}
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+          >
+            <Tag className="h-3 w-3 shrink-0" />
+            <span className="truncate">{tag.name}</span>
+          </button>
+        </li>
+      ))}
+      {tags.length === 0 && (
+        <li className="py-12 text-center text-muted-foreground">
+          <p className="text-sm">{t('nav.noTags')}</p>
+        </li>
+      )}
+    </ul>
+  )
+
+  const sidebarContent = (
+    <>
+      {/* 标题栏 */}
+      <div className="flex shrink-0 items-center justify-between p-4">
+        <div className={WEB_ROW_WITH_ICON_CLASS}>
+          <button
+            onClick={toggle}
+            aria-label={isOpen ? t('sidebar.closeSidebar') : t('sidebar.openSidebar')}
+            className="rounded-md p-1.5 transition-colors outline-none hover:bg-accent"
+          >
+            <ArrowRightFromLine
+              className={`${WEB_ICON_MD_CLASS} transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
+          <h1 className="text-xl font-semibold">Nicenote</h1>
+        </div>
+        <div className={WEB_ROW_WITH_ICON_CLASS}>
+          <SettingsDropdown
+            {...(onShowShortcuts ? { onShowShortcuts } : {})}
+            {...(onExportAll ? { onExportAll } : {})}
+            {...(onImport ? { onImport } : {})}
+          />
+          <button
+            onClick={handleCreateNote}
+            aria-label={t('sidebar.newNote')}
+            className="rounded-md bg-primary p-2 text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+          >
+            <Plus className={WEB_ICON_SM_CLASS} />
+          </button>
+        </div>
+      </div>
+
+      {/* 双栏主体：左导航 + 右内容 */}
+      <div className="flex flex-1 overflow-hidden">
+        {leftNav}
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {navView === 'notes' ? notesPanel : tagsPanel}
+        </div>
+      </div>
     </>
   )
 

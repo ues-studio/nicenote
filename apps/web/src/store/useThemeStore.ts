@@ -1,10 +1,10 @@
 import { create } from 'zustand'
 
-type Theme = 'light' | 'dark'
+export type Theme = 'light' | 'dark' | 'system'
 
 interface ThemeStore {
   theme: Theme
-  toggle: () => void
+  setTheme: (theme: Theme) => void
 }
 
 function getStorageKey(): string | null {
@@ -14,8 +14,12 @@ function getStorageKey(): string | null {
 
 function applyTheme(theme: Theme) {
   const root = document.documentElement
-  root.classList.toggle('dark', theme === 'dark')
-  root.setAttribute('data-theme', theme)
+  const isDark =
+    theme === 'dark' ||
+    (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+
+  root.classList.toggle('dark', isDark)
+  root.setAttribute('data-theme', isDark ? 'dark' : 'light')
 
   const storageKey = getStorageKey()
   if (storageKey) {
@@ -24,16 +28,53 @@ function applyTheme(theme: Theme) {
 }
 
 function resolveInitialTheme(): Theme {
-  if (typeof document === 'undefined') return 'light'
-  return document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+  if (typeof document === 'undefined') return 'system'
+  const storageKey = getStorageKey()
+  if (storageKey) {
+    const saved = localStorage.getItem(storageKey)
+    if (saved === 'light' || saved === 'dark' || saved === 'system') return saved
+  }
+  return 'system'
+}
+
+// 跟随系统主题时的媒体查询监听器
+let mediaQuery: MediaQueryList | null = null
+let mediaListener: ((e: MediaQueryListEvent) => void) | null = null
+
+function setupSystemListener() {
+  if (typeof window === 'undefined') return
+  cleanupSystemListener()
+  mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  mediaListener = (e: MediaQueryListEvent) => {
+    const root = document.documentElement
+    root.classList.toggle('dark', e.matches)
+    root.setAttribute('data-theme', e.matches ? 'dark' : 'light')
+  }
+  mediaQuery.addEventListener('change', mediaListener)
+}
+
+function cleanupSystemListener() {
+  if (mediaQuery && mediaListener) {
+    mediaQuery.removeEventListener('change', mediaListener)
+    mediaQuery = null
+    mediaListener = null
+  }
+}
+
+const initialTheme = resolveInitialTheme()
+if (initialTheme === 'system' && typeof window !== 'undefined') {
+  setupSystemListener()
 }
 
 export const useThemeStore = create<ThemeStore>((set) => ({
-  theme: resolveInitialTheme(),
-  toggle: () =>
-    set((state) => {
-      const next: Theme = state.theme === 'dark' ? 'light' : 'dark'
-      applyTheme(next)
-      return { theme: next }
-    }),
+  theme: initialTheme,
+  setTheme: (theme: Theme) => {
+    if (theme === 'system') {
+      setupSystemListener()
+    } else {
+      cleanupSystemListener()
+    }
+    applyTheme(theme)
+    set({ theme })
+  },
 }))

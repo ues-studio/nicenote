@@ -20,11 +20,12 @@
 
         var savedTheme = storageKey ? localStorage.getItem(storageKey) : null
 
-        // Default to light mode if no saved preference
-        var theme = savedTheme === 'dark' ? 'dark' : 'light'
+        // 默认跟随系统；仅当明确保存了 light/dark 时才覆盖
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+        var isDark = savedTheme === 'dark' || (savedTheme !== 'light' && prefersDark)
 
-        root.classList.toggle('dark', theme === 'dark')
-        root.setAttribute('data-theme', theme)
+        root.classList.toggle('dark', isDark)
+        root.setAttribute('data-theme', isDark ? 'dark' : 'light')
 
         // Language detection
         var savedLang = localStorage.getItem('nicenote-lang')
