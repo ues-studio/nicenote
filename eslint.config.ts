@@ -30,7 +30,6 @@ export default tseslint.config(
       '**/build/**',
       '**/.turbo/**',
       '**/drizzle/**',
-      '**/.wrangler/**',
       '**/*.d.ts',
       'apps/mobile/*.js',
       'apps/mobile/index.js',
