@@ -1,9 +1,0 @@
-
-digraph {
-	compound = "true"
-	newrank = "true"
-	subgraph "root" {
-		"[root] @nicenote/shared#lint" -> "[root] ___ROOT___"
-	}
-}
-

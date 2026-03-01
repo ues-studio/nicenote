@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { FileText, Search, X } from 'lucide-react'
@@ -6,7 +6,6 @@ import { FileText, Search, X } from 'lucide-react'
 import type { NoteSearchResult } from '@nicenote/shared'
 
 import { useDebouncedValue } from '../hooks/useDebouncedValue'
-import { useSearchQuery } from '../hooks/useSearchQuery'
 import { useNoteStore } from '../store/useNoteStore'
 
 interface SearchDialogProps {
@@ -23,7 +22,8 @@ function SearchDialogInner({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const debouncedQuery = useDebouncedValue(query, 300)
-  const { data: results, isFetching } = useSearchQuery(debouncedQuery)
+  const results = useMemo<NoteSearchResult[]>(() => [], [])
+  const isFetching = false
   const inputRef = useRef<HTMLInputElement>(null)
   const [selectedIndex, setSelectedIndex] = useState(0)
   const selectNote = useNoteStore((s) => s.selectNote)

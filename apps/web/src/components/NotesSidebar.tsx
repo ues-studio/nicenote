@@ -1,7 +1,6 @@
-import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useDeferredValue, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { useQueryClient } from '@tanstack/react-query'
 import type { Locale } from 'date-fns'
 import { formatDistanceToNow } from 'date-fns'
 import { ArrowRightFromLine, Plus, Search, Trash2 } from 'lucide-react'
@@ -10,28 +9,15 @@ import { useShallow } from 'zustand/react/shallow'
 import type { NoteListItem as NoteListItemType } from '@nicenote/shared'
 
 import { useMinuteTicker } from '../hooks/useMinuteTicker'
-import {
-  getNoteFromListCache,
-  removeNoteFromListCache,
-  restoreNoteToListCache,
-  useCreateNote,
-  useDeleteNote,
-} from '../hooks/useNoteMutations'
-import { useNotesQuery } from '../hooks/useNotesQuery'
 import { WEB_ICON_MD_CLASS, WEB_ICON_SM_CLASS, WEB_ROW_WITH_ICON_CLASS } from '../lib/class-names'
 import { getDateLocale } from '../lib/date-locale'
-import { useFolderStore } from '../store/useFolderStore'
 import { useNoteStore } from '../store/useNoteStore'
 import { useSidebarStore } from '../store/useSidebarStore'
-import { useToastStore } from '../store/useToastStore'
 
-import { FolderTree } from './FolderTree'
 import { SettingsDropdown } from './SettingsDropdown'
-import { TagFilter } from './TagFilter'
 
 interface NotesSidebarProps {
   isMobile: boolean
-  cancelPendingSave: (id: string) => void
   onShowShortcuts?: () => void
   onExportAll?: () => void
   onImport?: () => void
@@ -56,7 +42,6 @@ const NoteListItem = memo(function NoteListItem({
   deleteLabel,
   dateLocale,
 }: NoteListItemProps) {
-  // Each item subscribes independently — NotesSidebar no longer re-renders every minute
   useMinuteTicker()
 
   return (
@@ -104,7 +89,6 @@ const NoteListItem = memo(function NoteListItem({
 
 export function NotesSidebar({
   isMobile,
-  cancelPendingSave,
   onShowShortcuts,
   onExportAll,
   onImport,
@@ -112,7 +96,6 @@ export function NotesSidebar({
   const { t, i18n } = useTranslation()
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
-  const queryClient = useQueryClient()
 
   const { isOpen, width, isResizing, toggle, open, setWidth, startResize, stopResize } =
     useSidebarStore(
@@ -128,33 +111,15 @@ export function NotesSidebar({
       }))
     )
 
-  // Note list from react-query
-  const {
-    data: notesData,
-    isFetching,
-    error,
-    hasNextPage: hasMore,
-    isFetchingNextPage: isFetchingMore,
-    fetchNextPage: fetchMoreNotes,
-  } = useNotesQuery()
-  const notes = useMemo(() => notesData?.pages.flatMap((p) => p.data) ?? [], [notesData])
+  // 暂无数据源
+  const notes = useMemo<NoteListItemType[]>(() => [], [])
 
-  // Note selection from store
   const selectedNoteId = useNoteStore((s) => s.selectedNoteId)
   const selectNote = useNoteStore((s) => s.selectNote)
-
-  // Mutations
-  const createMutation = useCreateNote()
-  const deleteMutation = useDeleteNote()
-  const isCreating = createMutation.isPending
-
-  const addToast = useToastStore((state) => state.addToast)
 
   const dateLocale = useMemo(() => getDateLocale(i18n.language), [i18n.language])
   const untitledLabel = t('sidebar.untitled')
   const deleteLabel = t('sidebar.deleteNote', { title: '{{title}}' })
-
-  const pendingDeleteTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map())
 
   const handleSelectNote = useCallback(
     (note: NoteListItemType) => {
@@ -164,83 +129,20 @@ export function NotesSidebar({
     [selectNote, isMobile]
   )
 
-  const DELETE_UNDO_TIMEOUT_MS = 5000
+  const handleDeleteNote = useCallback((_id: string) => {
+    // TODO: 接入新数据源后实现删除逻辑
+  }, [])
 
-  const handleDeleteWithUndo = useCallback(
-    (id: string) => {
-      cancelPendingSave(id)
-
-      const noteToDelete = getNoteFromListCache(queryClient, id)
-      if (!noteToDelete) return
-
-      // Optimistic remove
-      removeNoteFromListCache(queryClient, id)
-      if (selectedNoteId === id) selectNote(null)
-
-      const deleteTimer = setTimeout(() => {
-        pendingDeleteTimers.current.delete(id)
-        deleteMutation.mutate(id)
-      }, DELETE_UNDO_TIMEOUT_MS)
-
-      pendingDeleteTimers.current.set(id, deleteTimer)
-
-      addToast(t('sidebar.noteDeleted'), {
-        duration: DELETE_UNDO_TIMEOUT_MS,
-        action: {
-          label: t('sidebar.undo'),
-          onClick: () => {
-            const timer = pendingDeleteTimers.current.get(id)
-            if (timer) {
-              clearTimeout(timer)
-              pendingDeleteTimers.current.delete(id)
-            }
-            restoreNoteToListCache(queryClient, noteToDelete)
-          },
-        },
-      })
-    },
-    [cancelPendingSave, queryClient, selectedNoteId, selectNote, deleteMutation, addToast, t]
-  )
-
-  const sentinelRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const sentinel = sentinelRef.current
-    if (!sentinel) return
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting && hasMore && !isFetchingMore) {
-          void fetchMoreNotes()
-        }
-      },
-      { threshold: 0.1 }
-    )
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [hasMore, isFetchingMore, fetchMoreNotes])
-
-  const sortedNoteIds = useMemo(() => {
-    return [...notes]
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-      .map((n) => n.id)
-  }, [notes])
-
-  const notesById = useMemo(() => {
-    const map = new Map<string, NoteListItemType>()
-    for (const note of notes) {
-      map.set(note.id, note)
-    }
-    return map
-  }, [notes])
+  const handleCreateNote = useCallback(() => {
+    // TODO: 接入新数据源后实现创建笔记逻辑
+  }, [])
 
   const filteredNotes = useMemo(() => {
     const normalizedSearch = deferredSearch.toLowerCase()
-    return sortedNoteIds
-      .map((id) => notesById.get(id)!)
-      .filter((note) => note && note.title.toLowerCase().includes(normalizedSearch))
-  }, [deferredSearch, sortedNoteIds, notesById])
+    return notes.filter((note) => note.title.toLowerCase().includes(normalizedSearch))
+  }, [deferredSearch, notes])
 
-  // Resize pointer handling
+  // 拖拽调整宽度
   const handleResizePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       e.preventDefault()
@@ -262,19 +164,6 @@ export function NotesSidebar({
     if (!isResizing) return
     stopResize()
   }, [isResizing, stopResize])
-
-  // Disable text selection during resize
-  useEffect(() => {
-    if (isResizing) {
-      document.body.style.userSelect = 'none'
-      return () => {
-        document.body.style.userSelect = ''
-      }
-    }
-  }, [isResizing])
-
-  const isInitialLoading = isFetching && notes.length === 0
-  const errorMessage = error ? (error as Error).message : null
 
   const sidebarContent = (
     <>
@@ -299,8 +188,7 @@ export function NotesSidebar({
               {...(onImport ? { onImport } : {})}
             />
             <button
-              onClick={() => createMutation.mutate(useFolderStore.getState().selectedFolderId)}
-              disabled={isCreating}
+              onClick={handleCreateNote}
               aria-label={t('sidebar.newNote')}
               className="rounded-md bg-primary p-2 text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
             >
@@ -323,43 +211,20 @@ export function NotesSidebar({
         </div>
       </div>
 
-      <FolderTree />
-      <TagFilter />
-
       <ul role="list" className="flex-1 space-y-1 overflow-y-auto p-2">
-        {isInitialLoading
-          ? Array.from({ length: 6 }).map((_, i) => (
-              <li key={i} className="animate-pulse space-y-2 rounded-md p-3">
-                <div className="h-4 w-2/3 rounded bg-muted" />
-                <div className="h-3 w-full rounded bg-muted" />
-                <div className="h-3 w-1/2 rounded bg-muted" />
-              </li>
-            ))
-          : filteredNotes.map((note) => (
-              <NoteListItem
-                key={note.id}
-                note={note}
-                isActive={selectedNoteId === note.id}
-                onSelect={handleSelectNote}
-                onDelete={handleDeleteWithUndo}
-                untitledLabel={untitledLabel}
-                deleteLabel={deleteLabel}
-                dateLocale={dateLocale}
-              />
-            ))}
-        <div ref={sentinelRef} className="h-1" />
-        {isFetchingMore && (
-          <li className="animate-pulse space-y-2 rounded-md p-3">
-            <div className="h-4 w-2/3 rounded bg-muted" />
-            <div className="h-3 w-1/2 rounded bg-muted" />
-          </li>
-        )}
-        {!isFetching && errorMessage && notes.length === 0 && (
-          <li className="py-12 text-center text-destructive">
-            <p className="text-sm">{errorMessage}</p>
-          </li>
-        )}
-        {!isFetching && !errorMessage && filteredNotes.length === 0 && (
+        {filteredNotes.map((note) => (
+          <NoteListItem
+            key={note.id}
+            note={note}
+            isActive={selectedNoteId === note.id}
+            onSelect={handleSelectNote}
+            onDelete={handleDeleteNote}
+            untitledLabel={untitledLabel}
+            deleteLabel={deleteLabel}
+            dateLocale={dateLocale}
+          />
+        ))}
+        {filteredNotes.length === 0 && (
           <li className="py-12 text-center text-muted-foreground">
             <p className="text-sm">{t('sidebar.noNotesFound')}</p>
           </li>
@@ -394,7 +259,6 @@ export function NotesSidebar({
 
   return (
     <aside className="relative flex h-full flex-col overflow-hidden border-r border-border bg-muted">
-      {/* Collapsed: toggle button centered in 48px strip */}
       <div
         className={`absolute inset-y-0 left-0 flex w-12 justify-center pt-4 transition-opacity duration-300 ${
           isOpen ? 'pointer-events-none opacity-0' : 'opacity-100'
@@ -411,7 +275,6 @@ export function NotesSidebar({
         </button>
       </div>
 
-      {/* Expanded: full sidebar content with fixed min-width to prevent reflow */}
       <div
         className={`flex flex-1 flex-col overflow-hidden transition-opacity duration-300 ${
           isOpen ? 'opacity-100' : 'pointer-events-none opacity-0'

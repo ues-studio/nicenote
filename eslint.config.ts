@@ -143,51 +143,10 @@ export default tseslint.config(
     },
     rules: {
       ...reactRefresh.configs.vite.rules,
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['apps/api/**', '../api/**', '../../api/**', '../../../api/**'],
-              message:
-                'Do not import from apps/api in web. Import shared types from @nicenote/shared.',
-            },
-          ],
-        },
-      ],
     },
   },
 
-  // 8. API 应用特定配置 (apps/api)
-  {
-    files: ['apps/api/src/**/*.ts'],
-    languageOptions: {
-      globals: globals.node,
-      parserOptions: {
-        project: [getTsconfigPath('apps/api/tsconfig.eslint.json')],
-      },
-    },
-  },
-
-  {
-    files: ['apps/api/drizzle.config.ts'],
-    languageOptions: {
-      globals: globals.node,
-      parserOptions: {
-        project: [getTsconfigPath('apps/api/tsconfig.node.json')],
-      },
-    },
-  },
-
-  // API 入口文件特殊规则
-  {
-    files: ['apps/api/src/index.ts'],
-    rules: {
-      '@typescript-eslint/no-unused-vars': 'off',
-    },
-  },
-
-  // 9. Editor & UI 包特定配置
+  // 8. Editor & UI 包特定配置
   {
     files: ['packages/editor/**/*.{ts,tsx}', 'packages/ui/**/*.{ts,tsx}'],
     rules: {

@@ -1,5 +1,0 @@
-{
-  "extends": "./tsconfig.worker.json",
-  "exclude": [],
-  "include": ["src/**/*.ts", "vitest.config.ts"]
-}

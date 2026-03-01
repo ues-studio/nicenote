@@ -39,7 +39,7 @@
     "dev": "turbo dev",
     "generate:css": "pnpm --filter web generate:css",
     "lint": "turbo lint && pnpm lint:cycles",
-    "lint:cycles": "madge --extensions ts,tsx --ts-config ./tsconfig.madge.json --exclude \"(?:^|/)dist/|\\\\.css$\" --circular apps/api/src apps/web/src/App.tsx apps/web/src/components apps/web/src/hooks apps/web/src/lib apps/web/src/store packages/editor/src packages/shared/src packages/tokens/src packages/ui/src",
+    "lint:cycles": "madge --extensions ts,tsx --ts-config ./tsconfig.madge.json --exclude \"(?:^|/)dist/|\\\\.css$\" --circular apps/web/src/App.tsx apps/web/src/components apps/web/src/hooks apps/web/src/lib apps/web/src/store packages/editor/src packages/shared/src packages/tokens/src packages/ui/src",
     "prepare": "husky",
     "typecheck": "tsc -b --pretty false",
     "test": "turbo test"

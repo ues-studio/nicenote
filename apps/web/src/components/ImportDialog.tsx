@@ -1,13 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { FileUp, Upload, X } from 'lucide-react'
 
-import { noteSelectSchema } from '@nicenote/shared'
-
-import { NOTES_QUERY_KEY } from '../hooks/useNotesQuery'
-import { api, throwApiError } from '../lib/api'
 import { WEB_ICON_SM_CLASS } from '../lib/class-names'
 import { type ParsedNote, parseMarkdownFile } from '../lib/import'
 
@@ -27,20 +22,6 @@ function ImportDialogInner({ onClose }: { onClose: () => void }) {
   const [isDragOver, setIsDragOver] = useState(false)
   const [importing, setImporting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const queryClient = useQueryClient()
-
-  const importMutation = useMutation({
-    mutationFn: async (note: ParsedNote) => {
-      const res = await api.notes.$post({
-        json: { title: note.title, content: note.content },
-      })
-      if (!res.ok) await throwApiError(res, `Import failed: ${res.status}`)
-      const body = await res.json()
-      const parsed = noteSelectSchema.safeParse(body)
-      if (!parsed.success) throw new Error('Invalid note data')
-      return parsed.data
-    },
-  })
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -86,15 +67,12 @@ function ImportDialogInner({ onClose }: { onClose: () => void }) {
   const handleImportAll = useCallback(async () => {
     setImporting(true)
     try {
-      for (const note of files) {
-        await importMutation.mutateAsync(note)
-      }
-      await queryClient.invalidateQueries({ queryKey: NOTES_QUERY_KEY })
+      // TODO: 接入新数据源后实现导入逻辑
       onClose()
     } finally {
       setImporting(false)
     }
-  }, [files, importMutation, queryClient, onClose])
+  }, [onClose])
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">

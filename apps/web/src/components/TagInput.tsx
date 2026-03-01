@@ -5,8 +5,6 @@ import { Plus, X } from 'lucide-react'
 
 import type { TagSelect } from '@nicenote/shared'
 
-import { useAddTagToNote, useCreateTag, useRemoveTagFromNote } from '../hooks/useTagMutations'
-import { useTagsQuery } from '../hooks/useTagsQuery'
 import { WEB_ICON_SM_CLASS } from '../lib/class-names'
 
 interface TagInputProps {
@@ -14,16 +12,13 @@ interface TagInputProps {
   noteTags: TagSelect[]
 }
 
-export const TagInput = memo(function TagInput({ noteId, noteTags }: TagInputProps) {
+export const TagInput = memo(function TagInput({ noteId: _noteId, noteTags }: TagInputProps) {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const { data: allTags = [] } = useTagsQuery()
-  const createTag = useCreateTag()
-  const addTagToNote = useAddTagToNote()
-  const removeTagFromNote = useRemoveTagFromNote()
+  const allTags = useMemo<TagSelect[]>(() => [], [])
 
   const noteTagIds = useMemo(() => new Set(noteTags.map((t) => t.id)), [noteTags])
 
@@ -39,36 +34,17 @@ export const TagInput = memo(function TagInput({ noteId, noteTags }: TagInputPro
     return !allTags.some((t) => t.name.toLowerCase() === search.toLowerCase().trim())
   }, [allTags, search])
 
-  const handleAddExisting = useCallback(
-    (tagId: string) => {
-      addTagToNote.mutate({ noteId, tagId })
-      setSearch('')
-      setIsOpen(false)
-    },
-    [addTagToNote, noteId]
-  )
+  const handleAddExisting = useCallback((_tagId: string) => {
+    setSearch('')
+    setIsOpen(false)
+  }, [])
 
   const handleCreateAndAdd = useCallback(async () => {
-    const name = search.trim()
-    if (!name) return
-    createTag.mutate(
-      { name },
-      {
-        onSuccess: (newTag) => {
-          addTagToNote.mutate({ noteId, tagId: newTag.id })
-          setSearch('')
-          setIsOpen(false)
-        },
-      }
-    )
-  }, [addTagToNote, createTag, noteId, search])
+    setSearch('')
+    setIsOpen(false)
+  }, [])
 
-  const handleRemove = useCallback(
-    (tagId: string) => {
-      removeTagFromNote.mutate({ noteId, tagId })
-    },
-    [noteId, removeTagFromNote]
-  )
+  const handleRemove = useCallback((_tagId: string) => {}, [])
 
   const handleOpen = useCallback(() => {
     setIsOpen(true)

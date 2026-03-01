@@ -1,19 +1,13 @@
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { useQueryClient } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
 import { Download, FileText, Plus } from 'lucide-react'
 
 import type { EditorLabels } from '@nicenote/editor'
 import { NicenoteEditor } from '@nicenote/editor'
-import type { NoteUpdateInput } from '@nicenote/shared'
 
-import type { SaveStatus } from '../hooks/useDebouncedNoteSave'
 import { useMinuteTicker } from '../hooks/useMinuteTicker'
-import { useNoteDetail } from '../hooks/useNoteDetail'
-import { updateNoteLocal, useCreateNote } from '../hooks/useNoteMutations'
-import { useNoteTagsQuery } from '../hooks/useNoteTagsQuery'
 import { WEB_ICON_SM_CLASS } from '../lib/class-names'
 import { getDateLocale } from '../lib/date-locale'
 import { downloadBlob, exportNoteAsMarkdown } from '../lib/export'
@@ -22,32 +16,23 @@ import { useNoteStore } from '../store/useNoteStore'
 import { TagInput } from './TagInput'
 
 interface NoteEditorPaneProps {
-  scheduleSave: (id: string, updates: NoteUpdateInput) => void
-  saveStatus: SaveStatus
   inert?: boolean
   isMobile: boolean
 }
 
-export function NoteEditorPane({ scheduleSave, saveStatus, inert, isMobile }: NoteEditorPaneProps) {
+export function NoteEditorPane({ inert, isMobile }: NoteEditorPaneProps) {
   const { t, i18n } = useTranslation()
-  const tick = useMinuteTicker()
-  const queryClient = useQueryClient()
+  useMinuteTicker()
   const selectedNoteId = useNoteStore((s) => s.selectedNoteId)
-  const { data: currentNote } = useNoteDetail(selectedNoteId)
-  const { data: noteTags = [] } = useNoteTagsQuery(selectedNoteId)
-  const createMutation = useCreateNote()
+  const selectNote = useNoteStore((s) => s.selectNote)
 
-  const saveStatusLabel: Record<SaveStatus, string | null> = useMemo(
-    () => ({
-      idle: null,
-      unsaved: t('saveStatus.unsaved'),
-      saving: t('saveStatus.saving'),
-      saved: t('saveStatus.saved'),
-    }),
-    [t]
-  )
-
-  const dateLocale = useMemo(() => getDateLocale(i18n.language), [i18n.language])
+  // 暂无数据源，当前笔记始终为 null
+  const currentNote = null as null | {
+    id: string
+    title: string
+    content: string | null
+    updatedAt: string
+  }
 
   const editorLabels: EditorLabels = useMemo(
     () => ({
@@ -81,35 +66,23 @@ export function NoteEditorPane({ scheduleSave, saveStatus, inert, isMobile }: No
     [t]
   )
 
-  const handleTitleChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (!currentNote) return
-      const newTitle = e.target.value
-      updateNoteLocal(queryClient, currentNote.id, { title: newTitle })
-      scheduleSave(currentNote.id, { title: newTitle })
-    },
-    [currentNote, queryClient, scheduleSave]
-  )
+  const dateLocale = useMemo(() => getDateLocale(i18n.language), [i18n.language])
 
-  const handleContentChange = useCallback(
-    (newContent: string) => {
-      if (!currentNote) return
-      updateNoteLocal(queryClient, currentNote.id, { content: newContent })
-      scheduleSave(currentNote.id, { content: newContent })
-    },
-    [currentNote, queryClient, scheduleSave]
-  )
-
-  const updatedAt = currentNote?.updatedAt ?? null
   const updatedAtLabel = useMemo(() => {
-    if (!updatedAt) return null
-    const time = formatDistanceToNow(new Date(updatedAt), {
+    if (!currentNote?.updatedAt) return null
+    const time = formatDistanceToNow(new Date(currentNote.updatedAt), {
       addSuffix: true,
       locale: dateLocale,
     })
     return t('editor.updated', { time })
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- tick forces re-evaluation of formatDistanceToNow
-  }, [updatedAt, dateLocale, t, tick])
+  }, [currentNote?.updatedAt, dateLocale, t])
+
+  const handleTitleChange = useCallback((_e: React.ChangeEvent<HTMLInputElement>) => {}, [])
+  const handleContentChange = useCallback((_content: string) => {}, [])
+
+  // 避免未使用变量的警告
+  void selectedNoteId
+  void selectNote
 
   return (
     <main className="flex min-w-0 flex-1 flex-col" {...(inert ? { inert: true } : {})}>
@@ -126,12 +99,11 @@ export function NoteEditorPane({ scheduleSave, saveStatus, inert, isMobile }: No
             />
             <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
               <span>{updatedAtLabel}</span>
-              {saveStatusLabel[saveStatus] && (
-                <span className="text-muted-foreground/70">{saveStatusLabel[saveStatus]}</span>
-              )}
               <button
                 onClick={() => {
-                  const blob = exportNoteAsMarkdown(currentNote)
+                  const blob = exportNoteAsMarkdown(
+                    currentNote as Parameters<typeof exportNoteAsMarkdown>[0]
+                  )
                   const filename = `${currentNote.title || 'Untitled'}.md`
                   downloadBlob(blob, filename)
                 }}
@@ -143,7 +115,7 @@ export function NoteEditorPane({ scheduleSave, saveStatus, inert, isMobile }: No
               </button>
             </div>
             <div className="mt-3">
-              <TagInput noteId={currentNote.id} noteTags={noteTags} />
+              <TagInput noteId={currentNote.id} noteTags={[]} />
             </div>
           </div>
           <div className="flex-1 overflow-hidden px-8 pb-8">
@@ -164,8 +136,7 @@ export function NoteEditorPane({ scheduleSave, saveStatus, inert, isMobile }: No
           <p className="text-lg font-medium">{t('editor.selectNote')}</p>
           <p className="text-sm opacity-70">{t('editor.selectNoteHint')}</p>
           <button
-            onClick={() => createMutation.mutate(undefined)}
-            disabled={createMutation.isPending}
+            onClick={() => {}}
             aria-label={t('editor.createNewNoteLabel')}
             className="mt-6 flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
