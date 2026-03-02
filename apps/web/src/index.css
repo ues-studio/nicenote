@@ -8,6 +8,29 @@
 /* Generated design tokens (theme variables, colors, dark mode) */
 @import './generated-tokens.css';
 
+/* 自定义工具类：替代任意值，避免 tailwindcss/no-arbitrary-value 规则报错 */
+@utility grid-rows-0fr {
+  grid-template-rows: 0fr;
+}
+
+@utility grid-rows-1fr {
+  grid-template-rows: 1fr;
+}
+
+@utility transition-grid {
+  transition-property: grid-template-rows;
+}
+
+@utility transition-transform-opacity {
+  transition-property: transform, opacity;
+}
+
+@utility shadow-toggle {
+  box-shadow:
+    0 4px 16px -4px rgba(0, 0, 0, 0.15),
+    0 2px 8px -2px rgba(0, 0, 0, 0.1);
+}
+
 @layer base {
   input,
   textarea,

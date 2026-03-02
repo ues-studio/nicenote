@@ -1,9 +1,18 @@
-import { memo, useCallback, useDeferredValue, useMemo, useState } from 'react'
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { Locale } from 'date-fns'
 import { formatDistanceToNow } from 'date-fns'
-import { ArrowRightFromLine, FileText, Plus, Search, Tag, Trash2, X } from 'lucide-react'
+import {
+  ArrowRightFromLine,
+  ChevronLeft,
+  FileText,
+  Search,
+  SquarePen,
+  Tag,
+  Trash2,
+  X,
+} from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 
 import type { NoteListItem as NoteListItemType } from '@nicenote/shared'
@@ -98,6 +107,12 @@ export function NotesSidebar({
   const { t, i18n } = useTranslation()
   const [search, setSearch] = useState('')
   const deferredSearch = useDeferredValue(search)
+  const [showSearch, setShowSearch] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (showSearch) searchInputRef.current?.focus()
+  }, [showSearch])
   const [navView, setNavView] = useState<NavView>('notes')
   const [selectedTagId, setSelectedTagId] = useState<string | null>(null)
 
@@ -205,7 +220,13 @@ export function NotesSidebar({
 
   // 左导航栏
   const leftNav = (
-    <nav className="flex w-20 shrink-0 flex-col gap-0.5 border-r border-border px-1.5 py-2">
+    <nav
+      className="flex w-20 shrink-0 flex-col gap-0.5 border-r border-border px-1.5 py-2"
+      onClick={(e) => {
+        // 点击导航空白区域时取消选中笔记
+        if (e.target === e.currentTarget) selectNote(null)
+      }}
+    >
       <button
         onClick={handleNavNotes}
         className={`flex flex-col items-center gap-1 rounded-md px-1 py-2.5 text-xs transition-colors ${
@@ -228,40 +249,72 @@ export function NotesSidebar({
         <Tag className={WEB_ICON_SM_CLASS} />
         <span className="text-center leading-tight">{t('nav.allTags')}</span>
       </button>
+      <div className="mt-auto flex justify-center">
+        <SettingsDropdown
+          {...(onShowShortcuts ? { onShowShortcuts } : {})}
+          {...(onExportAll ? { onExportAll } : {})}
+          {...(onImport ? { onImport } : {})}
+        />
+      </div>
     </nav>
   )
 
   // 笔记列表视图
   const notesPanel = (
     <>
-      <div className="shrink-0 px-2 pt-2 pb-1">
-        <div className="relative">
-          <Search
-            className={`absolute top-2.5 left-2.5 ${WEB_ICON_SM_CLASS} text-muted-foreground`}
-          />
-          <input
-            type="search"
-            placeholder={t('sidebar.searchNotes')}
-            aria-label={t('sidebar.searchNotesLabel')}
-            className="w-full py-2 pr-4 pl-9 text-sm outline-none"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      <div className="shrink-0">
+        {/* 搜索框：grid-rows 动画展开/收起 */}
+        <div
+          className={`grid transition-grid duration-200 ease-out ${
+            showSearch ? 'grid-rows-1fr' : 'grid-rows-0fr'
+          }`}
+        >
+          <div className="overflow-hidden">
+            <div
+              className={`px-2 pt-2 pb-1 transition-transform-opacity duration-150 ease-out ${
+                showSearch ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'
+              }`}
+            >
+              <div className="relative">
+                <Search
+                  className={`absolute top-2.5 left-2.5 ${WEB_ICON_SM_CLASS} text-muted-foreground`}
+                />
+                <input
+                  ref={searchInputRef}
+                  type="search"
+                  placeholder={t('sidebar.searchNotes')}
+                  aria-label={t('sidebar.searchNotesLabel')}
+                  className="w-full py-2 pr-4 pl-9 text-sm outline-none"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
         </div>
         {/* 标签过滤指示器 */}
         {selectedTag && (
-          <button
-            onClick={() => setSelectedTagId(null)}
-            className="mt-1.5 flex items-center gap-1 rounded-md bg-accent px-2 py-1 text-xs text-foreground transition-colors hover:bg-accent/70"
-          >
-            <Tag className="h-3 w-3" />
-            <span className="max-w-20 truncate">{selectedTag.name}</span>
-            <X className="h-3 w-3 shrink-0" />
-          </button>
+          <div className="px-2 pt-1.5 pb-1">
+            <button
+              onClick={() => setSelectedTagId(null)}
+              className="flex items-center gap-1 rounded-md bg-accent px-2 py-1 text-xs text-foreground transition-colors hover:bg-accent/70"
+            >
+              <Tag className="h-3 w-3" />
+              <span className="max-w-20 truncate">{selectedTag.name}</span>
+              <X className="h-3 w-3 shrink-0" />
+            </button>
+          </div>
         )}
       </div>
 
-      <ul role="list" className="flex-1 space-y-1 overflow-y-auto p-2">
+      <ul
+        role="list"
+        className="flex-1 space-y-1 overflow-y-auto p-2"
+        onClick={(e) => {
+          // 点击列表空白区域时取消选中笔记
+          if (e.target === e.currentTarget) selectNote(null)
+        }}
+      >
         {filteredNotes.map((note) => (
           <NoteListItem
             key={note.id}
@@ -309,30 +362,28 @@ export function NotesSidebar({
     <>
       {/* 标题栏 */}
       <div className="flex shrink-0 items-center justify-between p-4">
+        <h1 className="text-xl font-semibold">Nicenote</h1>
         <div className={WEB_ROW_WITH_ICON_CLASS}>
-          <button
-            onClick={toggle}
-            aria-label={isOpen ? t('sidebar.closeSidebar') : t('sidebar.openSidebar')}
-            className="rounded-md p-1.5 transition-colors outline-none hover:bg-accent"
-          >
-            <ArrowRightFromLine
-              className={`${WEB_ICON_MD_CLASS} transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
-            />
-          </button>
-          <h1 className="text-xl font-semibold">Nicenote</h1>
-        </div>
-        <div className={WEB_ROW_WITH_ICON_CLASS}>
-          <SettingsDropdown
-            {...(onShowShortcuts ? { onShowShortcuts } : {})}
-            {...(onExportAll ? { onExportAll } : {})}
-            {...(onImport ? { onImport } : {})}
-          />
           <button
             onClick={handleCreateNote}
             aria-label={t('sidebar.newNote')}
-            className="rounded-md bg-primary p-2 text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
           >
-            <Plus className={WEB_ICON_SM_CLASS} />
+            <SquarePen className={WEB_ICON_SM_CLASS} />
+          </button>
+          <button
+            onClick={() => {
+              setShowSearch((v) => !v)
+              setSearch('')
+            }}
+            aria-label={t('sidebar.searchNotes')}
+            className={`rounded-md p-2 transition-colors ${
+              showSearch
+                ? 'bg-accent text-foreground'
+                : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+            }`}
+          >
+            <Search className={WEB_ICON_SM_CLASS} />
           </button>
         </div>
       </div>
@@ -372,44 +423,45 @@ export function NotesSidebar({
   }
 
   return (
-    <aside className="relative flex h-full flex-col overflow-hidden border-r border-border bg-muted">
-      <div
-        className={`absolute inset-y-0 left-0 flex w-12 justify-center pt-4 transition-opacity duration-300 ${
-          isOpen ? 'pointer-events-none opacity-0' : 'opacity-100'
-        }`}
-      >
-        <button
-          onClick={toggle}
-          aria-label={t('sidebar.openSidebar')}
-          className="h-fit rounded-md p-1.5 transition-colors outline-none hover:bg-accent"
-        >
-          <ArrowRightFromLine
-            className={`${WEB_ICON_MD_CLASS} transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
-          />
-        </button>
-      </div>
-
-      <div
-        className={`flex flex-1 flex-col overflow-hidden transition-opacity duration-300 ${
-          isOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
-        }`}
-        style={{ minWidth: width }}
-      >
-        {sidebarContent}
-      </div>
-
-      {isOpen && (
+    <div className="relative h-full">
+      <aside className="relative flex h-full flex-col overflow-hidden border-r border-border bg-muted">
         <div
-          className={`absolute top-0 right-0 z-50 h-full cursor-col-resize bg-border transition-all duration-100 hover:bg-primary ${
-            isResizing ? 'w-0.75' : 'w-px hover:w-0.75'
+          className={`flex flex-1 flex-col overflow-hidden transition-opacity duration-300 ${
+            isOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
           }`}
-          style={{ right: isResizing ? '-1.5px' : '-0.5px' }}
-          onPointerDown={handleResizePointerDown}
-          onPointerMove={handleResizePointerMove}
-          onPointerUp={handleResizePointerUp}
-          onPointerCancel={handleResizePointerUp}
+          style={{ minWidth: width }}
+        >
+          {sidebarContent}
+        </div>
+
+        {isOpen && (
+          <div
+            className={`absolute top-0 right-0 z-50 h-full cursor-col-resize bg-border transition-all duration-100 hover:bg-primary ${
+              isResizing ? 'w-0.75' : 'w-px hover:w-0.75'
+            }`}
+            style={{ right: isResizing ? '-1.5px' : '-0.5px' }}
+            onPointerDown={handleResizePointerDown}
+            onPointerMove={handleResizePointerMove}
+            onPointerUp={handleResizePointerUp}
+            onPointerCancel={handleResizePointerUp}
+          />
+        )}
+      </aside>
+
+      {/* Ant Design Pro 风格折叠按钮：圆形，固定在侧边栏右侧边缘向外突出 */}
+      <button
+        onClick={toggle}
+        aria-label={isOpen ? t('sidebar.closeSidebar') : t('sidebar.openSidebar')}
+        style={{
+          right: '-12px',
+          boxShadow: '0 2px 8px -2px rgba(0,0,0,0.08), 0 1px 4px -1px rgba(0,0,0,0.05)',
+        }}
+        className="absolute bottom-8 z-50 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-border bg-background transition-shadow hover:shadow-toggle"
+      >
+        <ChevronLeft
+          className={`h-3.5 w-3.5 text-muted-foreground transition-transform duration-300 ${isOpen ? '' : 'rotate-180'}`}
         />
-      )}
-    </aside>
+      </button>
+    </div>
   )
 }
