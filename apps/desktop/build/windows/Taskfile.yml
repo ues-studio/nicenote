@@ -1,0 +1,61 @@
+version: '3'
+
+includes:
+  common: ../Taskfile.yml
+
+tasks:
+  build:
+    summary: 构建 Windows 版本
+    deps:
+      - task: common:go:mod:tidy
+      - task: common:build:frontend
+        vars:
+          PRODUCTION:
+            ref: .PRODUCTION
+      - task: common:generate:icons
+    cmds:
+      - task: generate:syso
+      - go build {{.BUILD_FLAGS}} -o {{.BIN_DIR}}/{{.APP_NAME}}.exe
+      - cmd: powershell Remove-Item *.syso -ErrorAction SilentlyContinue
+        platforms: [windows]
+      - cmd: rm -f *.syso
+        platforms: [linux, darwin]
+    vars:
+      BUILD_FLAGS: '{{if eq .PRODUCTION "true"}}-tags production -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui"{{else}}-buildvcs=false{{end}}'
+    env:
+      GOOS: windows
+      CGO_ENABLED: 0
+      GOARCH: '{{.ARCH | default ARCH}}'
+      PRODUCTION: '{{.PRODUCTION | default "false"}}'
+
+  build:dev:go:
+    summary: 开发模式 Go 编译（跳过前端构建，避免触发 Vite HMR）
+    deps:
+      - task: common:go:mod:tidy
+      - task: common:ensure:dist:placeholder
+    cmds:
+      - go build -buildvcs=false -o {{.BIN_DIR}}/{{.APP_NAME}}.exe
+    env:
+      GOOS: windows
+      CGO_ENABLED: 0
+      GOARCH: '{{.ARCH | default ARCH}}'
+
+  package:
+    summary: 打包为可分发的 Windows 安装包
+    cmds:
+      - task: build
+        vars:
+          PRODUCTION: "true"
+
+  generate:syso:
+    summary: 生成 Windows .syso 资源文件（图标、版本信息）
+    dir: build
+    cmds:
+      - wails3 generate syso -arch {{.ARCH}} -icon windows/icon.ico -manifest windows/wails.exe.manifest -info windows/info.json -out ../wails_windows_{{.ARCH}}.syso
+    vars:
+      ARCH: '{{.ARCH | default ARCH}}'
+
+  run:
+    summary: 运行已构建的 Windows 程序
+    cmds:
+      - '{{.BIN_DIR}}/{{.APP_NAME}}.exe'

@@ -1,0 +1,16 @@
+# Go 构建产物
+bin/
+build/bin/
+
+# 前端构建产物
+frontend/dist/
+frontend/node_modules/
+frontend/src/generated-tokens.css
+
+# Wails3 自动生成的 bindings（由 wails3 generate bindings 生成）
+# 仅保留手写的 nicenote_desktop.ts 类型包装层
+frontend/src/bindings/nicenote-desktop/
+frontend/src/bindings/github.com/
+
+# 开发工具
+.task/

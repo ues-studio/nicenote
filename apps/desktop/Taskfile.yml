@@ -1,0 +1,36 @@
+version: '3'
+
+includes:
+  common: ./build/Taskfile.yml
+  windows: ./build/windows/Taskfile.yml
+
+vars:
+  APP_NAME: 'NiceNote'
+  BIN_DIR: 'bin'
+  VITE_PORT: '{{.WAILS_VITE_PORT | default 5173}}'
+
+tasks:
+  build:
+    summary: 构建应用程序（完整构建，包含前端）
+    cmds:
+      - task: '{{OS}}:build'
+
+  build:dev:go:
+    summary: 开发模式 Go 编译（跳过 vite build，避免触发 HMR）
+    cmds:
+      - task: '{{OS}}:build:dev:go'
+
+  package:
+    summary: 打包生产版本
+    cmds:
+      - task: '{{OS}}:package'
+
+  run:
+    summary: 运行应用程序
+    cmds:
+      - task: '{{OS}}:run'
+
+  dev:
+    summary: 以开发模式运行（Go 热重载 + Vite 前端）
+    cmds:
+      - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}

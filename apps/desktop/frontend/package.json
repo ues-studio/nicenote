@@ -1,0 +1,35 @@
+{
+  "name": "@nicenote/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @nicenote/tokens build && tsx scripts/generate-css.ts && vite",
+    "build": "pnpm --filter @nicenote/tokens build && tsx scripts/generate-css.ts && tsc --noEmit && vite build",
+    "generate:css": "pnpm --filter @nicenote/tokens build && tsx scripts/generate-css.ts",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@nicenote/editor": "workspace:*",
+    "@nicenote/shared": "workspace:*",
+    "@nicenote/ui": "workspace:*",
+    "@wailsio/runtime": "3.0.0-alpha.79",
+    "date-fns": "^4.1.0",
+    "lucide-react": "^0.563.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zustand": "^5.0.10"
+  },
+  "devDependencies": {
+    "@nicenote/tokens": "workspace:*",
+    "@tailwindcss/vite": "^4.2.0",
+    "@types/node": "^20.19.0",
+    "@types/react": "^19.2.10",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "tailwindcss": "^4.2.0",
+    "typescript": "~5.9.3",
+    "tsx": "^4.19.3",
+    "vite": "^7.2.4"
+  }
+}

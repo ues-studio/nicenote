@@ -39,6 +39,14 @@
     "@nicenote/editor-bridge#build:template": {
       "outputs": ["src/assets/editor.html"],
       "dependsOn": ["^build"]
+    },
+    "@nicenote/desktop#build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "@nicenote/desktop#dev": {
+      "cache": false,
+      "persistent": true
     }
   }
 }

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- 主题初始化脚本：在页面渲染前执行，防止主题闪烁 -->
+    <script>
+      ;(function () {
+        var root = document.documentElement
+
+        // 从 localStorage 读取设置中的主题偏好
+        var savedTheme = localStorage.getItem('nicenote-desktop-theme')
+
+        // 默认跟随系统，仅当明确保存了 light/dark 时才覆盖
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+        var isDark = savedTheme === 'dark' || (savedTheme !== 'light' && prefersDark)
+
+        root.classList.toggle('dark', isDark)
+        root.setAttribute('data-theme', isDark ? 'dark' : 'light')
+
+        // 语言检测
+        var savedLang = localStorage.getItem('nicenote-desktop-lang')
+        var lang =
+          savedLang === 'zh' || savedLang === 'en'
+            ? savedLang
+            : (navigator.language || '').startsWith('zh')
+              ? 'zh'
+              : 'en'
+        root.lang = lang
+
+        // 禁用桌面端的右键菜单（由 Wails 原生菜单处理）
+        document.addEventListener('contextmenu', function (e) {
+          e.preventDefault()
+        })
+      })()
+    </script>
+
+    <title>NiceNote</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
