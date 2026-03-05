@@ -1,0 +1,1 @@
+{"default":{"identifier":"default","description":"Default capabilities for NiceNote desktop","local":true,"windows":["main"],"permissions":["core:default","core:event:default","core:window:default","dialog:allow-open","shell:allow-open","opener:default"]}}

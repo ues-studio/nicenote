@@ -9,7 +9,6 @@ out/
 .swc/
 .vite/
 .cache/
-# 仅忽略根级 build（避免误伤 apps/desktop/build/ 中的 Wails3 配置）
 /build/
 
 # Environment Variables
@@ -56,12 +55,8 @@ android/.gradle/
 android/app/build/
 *.jks
 
-# Go (desktop app)
-apps/desktop/bin/
-apps/desktop/build/bin/
+# Desktop (Tauri / Rust)
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
 apps/desktop/frontend/dist/
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
+apps/desktop/frontend/src/generated-tokens.css

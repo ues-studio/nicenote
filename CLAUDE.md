@@ -8,6 +8,9 @@ A note-taking app with rich text editing.
 apps/
   web/          # React 19 + Vite 7 + TailwindCSS v4 frontend
   mobile/       # React Native 0.79 (iOS/Android)
+  desktop/      # Tauri v2 (Rust + React 19) 桌面端
+    src-tauri/  # Rust 后端（IPC commands、文件系统、SQLite 缓存）
+    frontend/   # React 前端（复用 editor/ui/tokens/shared 包）
 packages/
   database/     # op-sqlite + Drizzle ORM (native apps)
   store/        # Zustand v5 + Immer (native apps)
@@ -49,6 +52,12 @@ pnpm --filter web generate:css   # Regenerate CSS from design tokens
 pnpm --filter @nicenote/editor-bridge build:template # Build Tiptap editor HTML bundle (must run before launching mobile app)
 pnpm --filter nicenote-mobile ios                    # Launch on iOS
 pnpm --filter nicenote-mobile android                # Launch on Android
+
+# Desktop (apps/desktop)
+cargo tauri dev          # 开发模式（需在 apps/desktop 内运行）
+cargo tauri build        # 生产构建
+pnpm --filter @nicenote/desktop dev:frontend     # 仅启动前端 Vite 开发服务器
+pnpm --filter @nicenote/desktop build:frontend   # 仅构建前端
 ```
 
 ## Architecture

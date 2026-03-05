@@ -1,0 +1,39 @@
+[package]
+name = "nicenote-desktop"
+version = "0.1.0"
+description = "NiceNote Desktop"
+authors = []
+edition = "2021"
+
+[lib]
+name = "nicenote_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "nicenote-desktop"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+rusqlite = { version = "0.32", features = ["bundled"] }
+notify-debouncer-mini = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
+walkdir = "2"
+anyhow = "1"
+parking_lot = "0.12"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

@@ -2,8 +2,8 @@ import { create } from 'zustand'
 
 import { debounce } from '@nicenote/shared'
 
-import type { NoteContent, NoteFile, SearchResult, Settings } from '../bindings/nicenote_desktop'
-import { AppService } from '../bindings/nicenote_desktop'
+import type { NoteContent, NoteFile, SearchResult, Settings } from '../bindings/tauri'
+import { AppService } from '../bindings/tauri'
 
 // ============================================================
 // 常量

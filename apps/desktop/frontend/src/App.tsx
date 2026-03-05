@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect } from 'react'
 
 import { useShallow } from 'zustand/react/shallow'
 
-import { useWailsEvents } from './hooks/useWailsEvents'
+import { useTauriEvents } from './hooks/useTauriEvents'
 import { useDesktopStore } from './store/useDesktopStore'
 
 // 懒加载编辑器（较大，延迟加载以加快首屏）
@@ -47,8 +47,8 @@ export default function App() {
     loadTagColors()
   }, [loadSettings, loadFavorites, loadTagColors])
 
-  // 注册 Wails 文件监听事件
-  useWailsEvents()
+  // 注册 Tauri 文件监听事件
+  useTauriEvents()
 
   // 全局键盘快捷键
   useEffect(() => {

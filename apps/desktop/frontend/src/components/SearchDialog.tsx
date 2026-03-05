@@ -7,7 +7,7 @@ import { useShallow } from 'zustand/react/shallow'
 
 import { cn } from '@nicenote/ui'
 
-import type { SearchResult } from '../bindings/nicenote_desktop'
+import type { SearchResult } from '../bindings/tauri'
 import { useDesktopStore } from '../store/useDesktopStore'
 
 // ============================================================

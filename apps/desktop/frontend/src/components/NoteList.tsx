@@ -7,7 +7,7 @@ import { useShallow } from 'zustand/react/shallow'
 
 import { cn } from '@nicenote/ui'
 
-import type { NoteFile } from '../bindings/nicenote_desktop'
+import type { NoteFile } from '../bindings/tauri'
 import { useDesktopStore } from '../store/useDesktopStore'
 
 // ============================================================

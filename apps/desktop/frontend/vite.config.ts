@@ -3,24 +3,25 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 import { defineConfig } from 'vite'
 
-// https://wails.io/docs/guides/vite
+// Tauri 开发模式：固定 5173 端口
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  base: './',
   build: {
     outDir: 'dist',
+    target: ['es2021', 'chrome100', 'safari13'],
+    minify: !process.env.TAURI_DEBUG,
+    sourcemap: !!process.env.TAURI_DEBUG,
   },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
     },
   },
-  // Wails3 开发模式：端口由 CLI 参数 --port WAILS_VITE_PORT 指定，不在此硬编码
-  // HMR 必须走 localhost，Wails3 的 wails.localhost 代理会对 WebSocket 返回 501
   server: {
+    port: 5173,
     strictPort: true,
-    hmr: {
-      protocol: 'ws',
-      host: 'localhost',
-    },
+    host: 'localhost',
   },
+  clearScreen: false,
 })

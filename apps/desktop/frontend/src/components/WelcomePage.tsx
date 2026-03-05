@@ -17,7 +17,7 @@ export function WelcomePage() {
   useEffect(() => {
     // 通过 openFolder 内部会加载 recentFolders
     // 这里直接调用 GetRecentFolders 预加载列表
-    import('../bindings/nicenote_desktop').then(({ AppService }) => {
+    import('../bindings/tauri').then(({ AppService }) => {
       AppService.GetRecentFolders()
         .then((folders) => {
           useDesktopStore.setState({ recentFolders: folders })
