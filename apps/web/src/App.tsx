@@ -1,22 +1,24 @@
 import { lazy, Suspense, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { useIsBreakpoint } from '@nicenote/ui'
+import {
+  EditorErrorBoundary,
+  NotesSidebar,
+  SearchDialog,
+  ShortcutsHelpModal,
+  Toasts,
+  useAppShell,
+  useGlobalShortcuts,
+} from '@nicenote/app-shell'
 
-import { EditorErrorBoundary } from './components/ErrorBoundary'
 import { ImportDialog } from './components/ImportDialog'
-import { NotesSidebar } from './components/NotesSidebar'
-import { SearchDialog } from './components/SearchDialog'
-import { ShortcutsHelpModal } from './components/ShortcutsHelpModal'
-import { Toasts } from './components/Toasts'
-import { useGlobalShortcuts } from './hooks/useGlobalShortcuts'
-import { useSidebarStore } from './store/useSidebarStore'
+import { WebAppShellProvider } from './providers/AppShellProvider'
 
 const NoteEditorPane = lazy(() =>
-  import('./components/NoteEditorPane').then((m) => ({ default: m.NoteEditorPane }))
+  import('@nicenote/app-shell').then((m) => ({ default: m.NoteEditorPane }))
 )
 
-export default function App() {
+function AppContent() {
   const { t } = useTranslation()
 
   const [searchOpen, setSearchOpen] = useState(false)
@@ -26,27 +28,22 @@ export default function App() {
   const closeShortcuts = useCallback(() => setShortcutsOpen(false), [])
   const closeImport = useCallback(() => setImportOpen(false), [])
 
-  const toggleSidebar = useSidebarStore((s) => s.toggle)
+  const { sidebar, isMobile } = useAppShell()
 
   const shortcutActions = useMemo(
     () => ({
       onSearch: () => setSearchOpen((prev) => !prev),
       onNewNote: () => {},
-      onToggleSidebar: () => toggleSidebar(),
+      onToggleSidebar: () => sidebar.toggle(),
       onShowHelp: () => setShortcutsOpen((prev) => !prev),
     }),
-    [toggleSidebar]
+    [sidebar]
   )
 
   useGlobalShortcuts(shortcutActions)
 
-  const isMobile = useIsBreakpoint('max', 768)
-  const isOpen = useSidebarStore((s) => s.isOpen)
-  const width = useSidebarStore((s) => s.width)
-  const closeSidebar = useSidebarStore((s) => s.close)
-
-  const mobileOverlayOpen = isMobile && isOpen
-  const gridColumns = isMobile ? '0px 1fr' : isOpen ? `${width}px 1fr` : '48px 1fr'
+  const mobileOverlayOpen = isMobile && sidebar.isOpen
+  const gridColumns = isMobile ? '0px 1fr' : sidebar.isOpen ? `${sidebar.width}px 1fr` : '48px 1fr'
 
   const handleShowShortcuts = useCallback(() => setShortcutsOpen(true), [])
   const handleImport = useCallback(() => setImportOpen(true), [])
@@ -59,11 +56,7 @@ export default function App() {
         transition: 'grid-template-columns 300ms ease-in-out',
       }}
     >
-      <NotesSidebar
-        isMobile={isMobile}
-        onShowShortcuts={handleShowShortcuts}
-        onImport={handleImport}
-      />
+      <NotesSidebar onShowShortcuts={handleShowShortcuts} onImport={handleImport} />
 
       <EditorErrorBoundary>
         <Suspense
@@ -73,12 +66,16 @@ export default function App() {
             </div>
           }
         >
-          <NoteEditorPane inert={mobileOverlayOpen} isMobile={isMobile} />
+          <NoteEditorPane inert={mobileOverlayOpen} />
         </Suspense>
       </EditorErrorBoundary>
 
       {mobileOverlayOpen && (
-        <div className="fixed inset-0 z-30 bg-black/20" onClick={closeSidebar} aria-hidden="true" />
+        <div
+          className="fixed inset-0 z-30 bg-black/20"
+          onClick={sidebar.close}
+          aria-hidden="true"
+        />
       )}
 
       <SearchDialog open={searchOpen} onClose={closeSearch} />
@@ -86,5 +83,13 @@ export default function App() {
       <ImportDialog open={importOpen} onClose={closeImport} />
       <Toasts />
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <WebAppShellProvider>
+      <AppContent />
+    </WebAppShellProvider>
   )
 }

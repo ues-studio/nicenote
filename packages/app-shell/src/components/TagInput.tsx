@@ -1,71 +1,73 @@
 import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Plus, X } from 'lucide-react'
-import { useShallow } from 'zustand/react/shallow'
+import { Plus } from 'lucide-react'
 
-import type { TagSelect } from '@nicenote/shared'
+import { TagPill } from '@nicenote/ui'
 
-import { WEB_ICON_SM_CLASS } from '../lib/class-names'
-import { useNoteStore } from '../store/useNoteStore'
+import { useAppShell } from '../context'
+import { ICON_SM_CLASS } from '../lib/class-names'
 
 interface TagInputProps {
   noteId: string
-  noteTags: TagSelect[]
+  /** 当前笔记的标签名列表 */
+  noteTags: string[]
+  /** 标签颜色映射（可选，desktop 通过 context.tags 提供） */
+  tagColors?: Record<string, string | undefined>
 }
 
-export const TagInput = memo(function TagInput({ noteId, noteTags }: TagInputProps) {
+export const TagInput = memo(function TagInput({ noteId, noteTags, tagColors }: TagInputProps) {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const { allTags, createTag, addTagToNote, removeTagFromNote } = useNoteStore(
-    useShallow((s) => ({
-      allTags: s.tags,
-      createTag: s.createTag,
-      addTagToNote: s.addTagToNote,
-      removeTagFromNote: s.removeTagFromNote,
-    }))
-  )
+  const { tags, noteTagActions } = useAppShell()
 
-  const noteTagIds = useMemo(() => new Set(noteTags.map((t) => t.id)), [noteTags])
+  const noteTagSet = useMemo(() => new Set(noteTags), [noteTags])
+
+  // 构建颜色映射：优先使用 props，否则从 context.tags 获取
+  const colorMap = useMemo(() => {
+    if (tagColors) return tagColors
+    const map: Record<string, string | undefined> = {}
+    for (const tag of tags) {
+      map[tag.name] = tag.color
+    }
+    return map
+  }, [tagColors, tags])
 
   const filteredTags = useMemo(() => {
     const lower = search.toLowerCase()
-    return allTags.filter(
-      (tag) => !noteTagIds.has(tag.id) && tag.name.toLowerCase().includes(lower)
-    )
-  }, [allTags, noteTagIds, search])
+    return tags.filter((tag) => !noteTagSet.has(tag.name) && tag.name.toLowerCase().includes(lower))
+  }, [tags, noteTagSet, search])
 
   const showCreateOption = useMemo(() => {
     if (!search.trim()) return false
-    return !allTags.some((t) => t.name.toLowerCase() === search.toLowerCase().trim())
-  }, [allTags, search])
+    return !tags.some((t) => t.name.toLowerCase() === search.toLowerCase().trim())
+  }, [tags, search])
 
   const handleAddExisting = useCallback(
-    (tagId: string) => {
-      addTagToNote(noteId, tagId)
+    (tagName: string) => {
+      noteTagActions.addTag(noteId, tagName)
       setSearch('')
       setIsOpen(false)
     },
-    [noteId, addTagToNote]
+    [noteId, noteTagActions]
   )
 
   const handleCreateAndAdd = useCallback(() => {
     const name = search.trim()
     if (!name) return
-    const tag = createTag(name)
-    addTagToNote(noteId, tag.id)
+    noteTagActions.addTag(noteId, name)
     setSearch('')
     setIsOpen(false)
-  }, [search, noteId, createTag, addTagToNote])
+  }, [search, noteId, noteTagActions])
 
   const handleRemove = useCallback(
-    (tagId: string) => {
-      removeTagFromNote(noteId, tagId)
+    (tagName: string) => {
+      noteTagActions.removeTag(noteId, tagName)
     },
-    [noteId, removeTagFromNote]
+    [noteId, noteTagActions]
   )
 
   const handleOpen = useCallback(() => {
@@ -75,21 +77,15 @@ export const TagInput = memo(function TagInput({ noteId, noteTags }: TagInputPro
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      {noteTags.map((tag) => (
-        <span
-          key={tag.id}
-          className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs text-foreground"
-          style={tag.color ? { backgroundColor: tag.color + '20', color: tag.color } : undefined}
-        >
-          {tag.name}
-          <button
-            onClick={() => handleRemove(tag.id)}
-            className="rounded-full p-0.5 opacity-60 transition-opacity hover:opacity-100"
-            aria-label={t('tag.removeTag', { name: tag.name })}
-          >
-            <X className="h-3 w-3" />
-          </button>
-        </span>
+      {noteTags.map((tagName) => (
+        <TagPill
+          key={tagName}
+          label={tagName}
+          color={colorMap[tagName] ?? null}
+          onRemove={() => handleRemove(tagName)}
+          removeLabel={t('tag.removeTag', { name: tagName })}
+          className="bg-muted px-2.5"
+        />
       ))}
 
       {isOpen ? (
@@ -110,7 +106,7 @@ export const TagInput = memo(function TagInput({ noteId, noteTags }: TagInputPro
               } else if (e.key === 'Enter' && showCreateOption) {
                 handleCreateAndAdd()
               } else if (e.key === 'Enter' && filteredTags.length > 0 && filteredTags[0]) {
-                handleAddExisting(filteredTags[0].id)
+                handleAddExisting(filteredTags[0].name)
               }
             }}
             placeholder={t('tag.searchOrCreate')}
@@ -120,9 +116,9 @@ export const TagInput = memo(function TagInput({ noteId, noteTags }: TagInputPro
             <div className="absolute top-full left-0 z-50 mt-1 max-h-40 w-48 overflow-y-auto rounded-md border border-border bg-popover shadow-md">
               {filteredTags.map((tag) => (
                 <button
-                  key={tag.id}
+                  key={tag.name}
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => handleAddExisting(tag.id)}
+                  onClick={() => handleAddExisting(tag.name)}
                   className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-accent"
                 >
                   {tag.color && (
@@ -152,7 +148,7 @@ export const TagInput = memo(function TagInput({ noteId, noteTags }: TagInputPro
           onClick={handleOpen}
           className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary"
         >
-          <Plus className={WEB_ICON_SM_CLASS} />
+          <Plus className={ICON_SM_CLASS} />
           {t('tag.addTag')}
         </button>
       )}

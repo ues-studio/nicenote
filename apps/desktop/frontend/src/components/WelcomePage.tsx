@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { ChevronRight, Clock, FolderOpen } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
@@ -6,6 +7,8 @@ import { useShallow } from 'zustand/react/shallow'
 import { useDesktopStore } from '../store/useDesktopStore'
 
 export function WelcomePage() {
+  const { t } = useTranslation()
+
   const { recentFolders, openFolder } = useDesktopStore(
     useShallow((s) => ({
       recentFolders: s.recentFolders,
@@ -15,8 +18,6 @@ export function WelcomePage() {
 
   // 加载最近文件夹列表
   useEffect(() => {
-    // 通过 openFolder 内部会加载 recentFolders
-    // 这里直接调用 GetRecentFolders 预加载列表
     import('../bindings/tauri').then(({ AppService }) => {
       AppService.GetRecentFolders()
         .then((folders) => {
@@ -49,7 +50,6 @@ export function WelcomePage() {
         <div className="mb-12 text-center">
           <div className="mb-6 flex justify-center">
             <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-primary/10">
-              {/* 笔记图标 */}
               <svg
                 width="40"
                 height="40"
@@ -91,8 +91,8 @@ export function WelcomePage() {
               </svg>
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-foreground">NiceNote</h1>
-          <p className="mt-2 text-sm text-muted-foreground">你的文件就是你的笔记</p>
+          <h1 className="text-3xl font-bold text-foreground">{t('welcome.title')}</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{t('welcome.subtitle')}</p>
         </div>
 
         {/* 打开文件夹按钮 */}
@@ -101,20 +101,17 @@ export function WelcomePage() {
           className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
         >
           <FolderOpen className="h-4 w-4" />
-          打开文件夹
+          {t('welcome.openFolder')}
         </button>
 
-        {/* 键盘提示 */}
-        <p className="mt-3 text-center text-xs text-muted-foreground/60">
-          选择一个文件夹作为笔记库
-        </p>
+        <p className="mt-3 text-center text-xs text-muted-foreground/60">{t('welcome.hint')}</p>
 
         {/* 最近打开的文件夹 */}
         {displayFolders.length > 0 && (
           <div className="mt-10">
             <div className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
               <Clock className="h-3.5 w-3.5" />
-              <span>最近打开</span>
+              <span>{t('welcome.recentFolders')}</span>
             </div>
             <ul className="space-y-1">
               {displayFolders.map((folder) => (
@@ -129,7 +126,6 @@ export function WelcomePage() {
         )}
       </div>
 
-      {/* 底部版本信息 */}
       <div className="absolute bottom-6 text-xs text-muted-foreground/40">NiceNote Desktop</div>
     </div>
   )
@@ -145,9 +141,7 @@ interface RecentFolderItemProps {
 }
 
 function RecentFolderItem({ path, onClick }: RecentFolderItemProps) {
-  // 提取文件夹名（路径最后一段）
   const name = path.split(/[\\/]/).filter(Boolean).pop() ?? path
-  // 格式化为用户友好的路径（去掉 home 目录前缀）
   const displayPath = path.replace(/^\/Users\/[^/]+/, '~').replace(/^C:\\Users\\[^\\]+/, '~')
 
   return (

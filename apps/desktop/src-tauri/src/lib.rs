@@ -50,6 +50,12 @@ pub fn run() {
                 search_index: Mutex::new(SearchIndex::default()),
             });
 
+            // 开发模式下自动打开 DevTools
+            #[cfg(debug_assertions)]
+            if let Some(window) = app.get_webview_window("main") {
+                window.open_devtools();
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

@@ -1,6 +1,7 @@
 import type { StateCreator } from 'zustand'
 
 import { AppService } from '../../bindings/tauri'
+import { setCurrentFolder } from '../../lib/repository-provider'
 import type { DesktopStore } from '../useDesktopStore'
 
 export interface FolderSlice {
@@ -21,10 +22,15 @@ export const createFolderSlice: StateCreator<DesktopStore, [], [], FolderSlice> 
       }
       if (!folderPath) return
 
-      await AppService.AddRecentFolder(folderPath)
-      await AppService.WatchFolder(folderPath)
-
+      // 先更新状态，确保界面立即切换；同时创建 domain repository 实例
       set({ currentFolder: folderPath, activeNote: null, notes: [] })
+      setCurrentFolder(folderPath)
+
+      // 非关键操作并行执行，失败不影响主流程
+      await Promise.allSettled([
+        AppService.AddRecentFolder(folderPath),
+        AppService.WatchFolder(folderPath),
+      ])
 
       await get().loadNotes()
       const recent = await AppService.GetRecentFolders()

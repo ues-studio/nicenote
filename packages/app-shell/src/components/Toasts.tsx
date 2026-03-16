@@ -1,18 +1,12 @@
 import { useTranslation } from 'react-i18next'
 
 import { X } from 'lucide-react'
-import { useShallow } from 'zustand/react/shallow'
 
-import { useToastStore } from '../store/useToastStore'
+import { useAppShell } from '../context'
 
 export function Toasts() {
   const { t } = useTranslation()
-  const { toasts, removeToast } = useToastStore(
-    useShallow((state) => ({
-      toasts: state.toasts,
-      removeToast: state.removeToast,
-    }))
-  )
+  const { toasts, removeToast } = useAppShell()
 
   if (toasts.length === 0) return null
 

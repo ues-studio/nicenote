@@ -144,6 +144,29 @@ const en = {
     allNotes: 'All Notes',
     allTags: 'All Tags',
     noTags: 'No tags yet',
+    favorites: 'Favorites',
+    folderTree: 'Folders',
+  },
+  // Desktop 专有
+  welcome: {
+    title: 'NiceNote',
+    subtitle: 'Your files are your notes',
+    openFolder: 'Open Folder',
+    hint: 'Choose a folder as your notebook',
+    recentFolders: 'Recently Opened',
+  },
+  contextMenu: {
+    addToFavorites: 'Add to Favorites',
+    removeFromFavorites: 'Remove from Favorites',
+    revealInExplorer: 'Reveal in File Explorer',
+    delete: 'Delete',
+  },
+  noteList: {
+    confirmDelete: 'Are you sure you want to delete this note? This action cannot be undone.',
+    noFavorites: 'No favorites yet',
+    noNotes: 'No notes yet',
+    noResults: 'No results found',
+    loading: 'Loading...',
   },
 } as const
 

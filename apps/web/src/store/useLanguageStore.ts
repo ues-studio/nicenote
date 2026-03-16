@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-import i18n from '../i18n'
+import { i18n } from '@nicenote/app-shell'
 
 type Language = 'en' | 'zh'
 

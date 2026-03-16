@@ -2,19 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
-import {
-  Check,
-  Download,
-  Keyboard,
-  Languages,
-  Monitor,
-  Moon,
-  Search,
-  Settings,
-  Sun,
-  Upload,
-} from 'lucide-react'
-import { useShallow } from 'zustand/react/shallow'
+import { Check, Keyboard, Languages, Monitor, Moon, Search, Settings, Sun } from 'lucide-react'
 
 import {
   DropdownMenu,
@@ -23,11 +11,10 @@ import {
   DropdownMenuTrigger,
 } from '@nicenote/ui'
 
-import { WEB_ICON_BUTTON_CLASS, WEB_ICON_MD_CLASS, WEB_ICON_SM_CLASS } from '../lib/class-names'
-import { useLanguageStore } from '../store/useLanguageStore'
-import { useThemeStore } from '../store/useThemeStore'
+import { useAppShell } from '../context'
+import { ICON_BUTTON_CLASS, ICON_MD_CLASS, ICON_SM_CLASS } from '../lib/class-names'
 
-// 支持的语言列表（native 名 + 英文名）
+// 支持的语言列表
 const LANGUAGES = [
   { code: 'en', nativeName: 'English', englishName: 'English' },
   { code: 'zh', nativeName: '中文', englishName: 'Chinese' },
@@ -47,19 +34,7 @@ export function SettingsDropdown({
   onImport,
 }: SettingsDropdownProps) {
   const { t } = useTranslation()
-
-  const { theme, setTheme } = useThemeStore(
-    useShallow((s) => ({
-      theme: s.theme,
-      setTheme: s.setTheme,
-    }))
-  )
-  const { language, setLanguage } = useLanguageStore(
-    useShallow((s) => ({
-      language: s.language,
-      setLanguage: s.setLanguage,
-    }))
-  )
+  const { theme, setTheme, language, setLanguage } = useAppShell()
 
   const [pickerOpen, setPickerOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -97,9 +72,9 @@ export function SettingsDropdown({
         <DropdownMenuTrigger asChild>
           <button
             aria-label={t('settings.title')}
-            className={`${WEB_ICON_BUTTON_CLASS} focus-visible:ring-2 focus-visible:ring-primary`}
+            className={`${ICON_BUTTON_CLASS} focus-visible:ring-2 focus-visible:ring-primary`}
           >
-            <Settings className={WEB_ICON_MD_CLASS} />
+            <Settings className={ICON_MD_CLASS} />
           </button>
         </DropdownMenuTrigger>
 
@@ -107,7 +82,7 @@ export function SettingsDropdown({
           <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
             {t('settings.theme')}
           </div>
-          {/* 主题分段控件：浅色 / 深色 / 跟随系统 */}
+          {/* 主题分段控件 */}
           <div className="flex gap-1 px-2 pb-1.5">
             {(
               [
@@ -127,7 +102,7 @@ export function SettingsDropdown({
                     : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground'
                 }`}
               >
-                <Icon className={WEB_ICON_SM_CLASS} />
+                <Icon className={ICON_SM_CLASS} />
               </button>
             ))}
           </div>
@@ -139,7 +114,7 @@ export function SettingsDropdown({
             className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm"
             onSelect={() => setPickerOpen(true)}
           >
-            <Languages className={WEB_ICON_SM_CLASS} />
+            <Languages className={ICON_SM_CLASS} />
             <span className="flex-1 text-left">{t('settings.language')}</span>
           </DropdownMenuItem>
 
@@ -150,7 +125,6 @@ export function SettingsDropdown({
               className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm"
               onSelect={onImport}
             >
-              <Upload className={WEB_ICON_SM_CLASS} />
               <span className="flex-1 text-left">{t('import.title')}</span>
             </DropdownMenuItem>
           )}
@@ -159,7 +133,6 @@ export function SettingsDropdown({
               className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm"
               onSelect={onExportAll}
             >
-              <Download className={WEB_ICON_SM_CLASS} />
               <span className="flex-1 text-left">{t('export.exportAll')}</span>
             </DropdownMenuItem>
           )}
@@ -168,7 +141,7 @@ export function SettingsDropdown({
               className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm"
               onSelect={onShowShortcuts}
             >
-              <Keyboard className={WEB_ICON_SM_CLASS} />
+              <Keyboard className={ICON_SM_CLASS} />
               <span className="flex-1 text-left">{t('shortcuts.title')}</span>
             </DropdownMenuItem>
           )}
@@ -182,14 +155,11 @@ export function SettingsDropdown({
             className="fixed inset-0 z-50 flex items-center justify-center"
             onClick={handleClose}
           >
-            {/* 虚化背景遮罩 */}
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-            {/* 弹层主体 */}
             <div
               className="relative w-80 overflow-hidden rounded-xl border border-border bg-popover shadow-xl"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* 搜索框 */}
               <div className="flex items-center gap-2 border-b border-border px-3 py-3">
                 <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <input
@@ -200,7 +170,6 @@ export function SettingsDropdown({
                   className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
                 />
               </div>
-              {/* 语言列表 */}
               <div className="max-h-80 overflow-y-auto">
                 {filtered.map(({ code, nativeName, englishName }) => (
                   <button

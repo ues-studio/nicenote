@@ -7,7 +7,7 @@
 import { writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-import { toKebabCase } from '@nicenote/shared'
+import { toKebabCase } from '../../shared/src/parsers.ts'
 import {
   borderRadius,
   colors,
@@ -22,7 +22,7 @@ import {
   shadowWeb,
   spacing,
   zIndex,
-} from '@nicenote/tokens'
+} from '../src/index.ts'
 
 type Palette = Record<keyof typeof colors, string>
 type VarEntry = [name: string, value: string]

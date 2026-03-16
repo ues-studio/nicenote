@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 
-interface GlobalShortcutActions {
+export interface GlobalShortcutActions {
   onSearch: () => void
   onNewNote: () => void
   onToggleSidebar: () => void
@@ -18,28 +18,28 @@ export function useGlobalShortcuts(actions: GlobalShortcutActions) {
     const handler = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey
 
-      // Cmd+K — Search (works even in input)
+      // Cmd+K — 搜索（在输入框中也生效）
       if (mod && e.key === 'k') {
         e.preventDefault()
         actions.onSearch()
         return
       }
 
-      // Cmd+N — New note
+      // Cmd+N — 新建笔记
       if (mod && e.key === 'n') {
         e.preventDefault()
         actions.onNewNote()
         return
       }
 
-      // Cmd+\ — Toggle sidebar
+      // Cmd+\ — 切换侧边栏
       if (mod && e.key === '\\') {
         e.preventDefault()
         actions.onToggleSidebar()
         return
       }
 
-      // / — Show shortcuts help (only when not in an input)
+      // / — 显示快捷键帮助（仅在非输入框中）
       if (e.key === '/' && !mod && !e.shiftKey && !isInputElement(e.target)) {
         e.preventDefault()
         actions.onShowHelp()

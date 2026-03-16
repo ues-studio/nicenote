@@ -1,5 +1,7 @@
 import type { StateCreator } from 'zustand'
 
+import { i18n } from '@nicenote/app-shell'
+
 import type { Settings } from '../../bindings/tauri'
 import { AppService } from '../../bindings/tauri'
 import type { DesktopStore } from '../useDesktopStore'
@@ -13,7 +15,6 @@ export interface SettingsSlice {
   // 视图状态
   currentView: CurrentView
   selectedTag: string | null
-  sidebarOpen: boolean
 
   // 应用设置
   settings: Settings
@@ -23,7 +24,6 @@ export interface SettingsSlice {
   // 视图操作
   setCurrentView: (view: CurrentView) => void
   setSelectedTag: (tag: string | null) => void
-  toggleSidebar: () => void
 
   // 收藏操作
   toggleFavorite: (path: string) => Promise<void>
@@ -42,7 +42,6 @@ export const createSettingsSlice: StateCreator<DesktopStore, [], [], SettingsSli
 ) => ({
   currentView: 'all',
   selectedTag: null,
-  sidebarOpen: true,
   settings: { theme: 'system', language: 'zh' },
   tagColors: {},
   favorites: [],
@@ -53,10 +52,6 @@ export const createSettingsSlice: StateCreator<DesktopStore, [], [], SettingsSli
 
   setSelectedTag: (tag: string | null) => {
     set({ selectedTag: tag, currentView: 'all' })
-  },
-
-  toggleSidebar: () => {
-    set((state) => ({ sidebarOpen: !state.sidebarOpen }))
   },
 
   toggleFavorite: async (path: string) => {
@@ -85,6 +80,8 @@ export const createSettingsSlice: StateCreator<DesktopStore, [], [], SettingsSli
       applyTheme(settings.theme)
       localStorage.setItem(THEME_STORAGE_KEY, settings.theme)
       localStorage.setItem(LANG_STORAGE_KEY, settings.language)
+      // 同步 i18n 语言
+      void i18n.changeLanguage(settings.language)
     } catch (err) {
       console.error('加载设置失败:', err)
     }
@@ -101,6 +98,8 @@ export const createSettingsSlice: StateCreator<DesktopStore, [], [], SettingsSli
     if (patch.language) {
       localStorage.setItem(LANG_STORAGE_KEY, patch.language)
       document.documentElement.lang = patch.language
+      // 同步 i18n 语言
+      void i18n.changeLanguage(patch.language)
     }
     try {
       await AppService.SaveSettings(updated)

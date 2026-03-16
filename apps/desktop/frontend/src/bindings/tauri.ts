@@ -51,30 +51,26 @@ export const AppService = {
 
   RevealInExplorer: (path: string): Promise<void> => invoke('reveal_in_explorer', { path }),
 
-  ListNotes: (folderPath: string): Promise<NoteFile[]> =>
-    invoke('list_notes', { folder_path: folderPath }),
+  ListNotes: (folderPath: string): Promise<NoteFile[]> => invoke('list_notes', { folderPath }),
 
   GetNoteContent: (path: string): Promise<NoteContent> => invoke('get_note_content', { path }),
 
   SaveNote: (path: string, content: string, tags: string[]): Promise<void> =>
     invoke('save_note', { path, content, tags }),
 
-  CreateNote: (folderPath: string): Promise<NoteFile> =>
-    invoke('create_note', { folder_path: folderPath }),
+  CreateNote: (folderPath: string): Promise<NoteFile> => invoke('create_note', { folderPath }),
 
   RenameNote: (oldPath: string, newTitle: string): Promise<NoteFile> =>
-    invoke('rename_note', { old_path: oldPath, new_title: newTitle }),
+    invoke('rename_note', { oldPath, newTitle }),
 
   DeleteNote: (path: string): Promise<void> => invoke('delete_note', { path }),
 
   SearchNotes: (folderPath: string, query: string): Promise<SearchResult[]> =>
-    invoke('search_notes', { folder_path: folderPath, query }),
+    invoke('search_notes', { folderPath, query }),
 
-  GetFolderTree: (rootPath: string): Promise<FolderNode> =>
-    invoke('get_folder_tree', { root_path: rootPath }),
+  GetFolderTree: (rootPath: string): Promise<FolderNode> => invoke('get_folder_tree', { rootPath }),
 
-  WatchFolder: (folderPath: string): Promise<void> =>
-    invoke('watch_folder', { folder_path: folderPath }),
+  WatchFolder: (folderPath: string): Promise<void> => invoke('watch_folder', { folderPath }),
 
   GetSettings: (): Promise<Settings> => invoke('get_settings'),
 

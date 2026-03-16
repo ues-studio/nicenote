@@ -12,6 +12,7 @@
     "@floating-ui/react": "^0.27.17",
     "@types/react": "^19.2.10",
     "@types/react-dom": "^19.2.3",
+    "lucide-react": "^0.563.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "typescript": "~5.9.3"
@@ -25,6 +26,7 @@
   },
   "peerDependencies": {
     "@floating-ui/react": "^0.27.17",
+    "lucide-react": "^0.563.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

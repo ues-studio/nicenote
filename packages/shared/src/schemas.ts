@@ -20,6 +20,7 @@ export const noteSelectSchema = z
 
 export const noteListItemSchema = noteSelectSchema.omit({ content: true }).extend({
   summary: z.string().nullable(),
+  tags: z.array(z.string()).optional().default([]),
 })
 
 export const noteInsertSchema = z
@@ -45,11 +46,15 @@ export const noteUpdateSchema = z
     title: z.string().max(MAX_TITLE_LENGTH).optional(),
     content: z.string().max(MAX_CONTENT_LENGTH).nullable().optional(),
     folderId: z.string().nullable().optional(),
+    tags: z.array(z.string()).optional(),
   })
   .strict()
   .refine(
     (input) =>
-      input.title !== undefined || input.content !== undefined || input.folderId !== undefined,
+      input.title !== undefined ||
+      input.content !== undefined ||
+      input.folderId !== undefined ||
+      input.tags !== undefined,
     { message: 'At least one field must be provided for update' }
   )
 

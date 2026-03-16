@@ -55,6 +55,7 @@ export class LocalStorageNoteRepository implements NoteRepository {
       folderId: n.folderId,
       createdAt: n.createdAt,
       updatedAt: n.updatedAt,
+      tags: [] as string[],
     }))
 
     const last = data[data.length - 1]
@@ -140,6 +141,7 @@ export class LocalStorageNoteRepository implements NoteRepository {
         folderId: note.folderId,
         createdAt: note.createdAt,
         updatedAt: note.updatedAt,
+        tags: [],
         snippet,
       })
     }

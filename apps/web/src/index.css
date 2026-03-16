@@ -1,51 +1,20 @@
 @import 'tailwindcss';
-@source "../../packages";
+@source "../../../packages";
 @config "../tailwind.config.ts";
 
-/* Nicenote Editor Required Styles */
+/* NiceNote 编辑器样式 */
 @import '@nicenote/editor/styles/editor.css';
 
-/* Generated design tokens (theme variables, colors, dark mode) */
+/* 由 scripts/generate-css.ts 生成的设计 token CSS 变量 */
 @import './generated-tokens.css';
 
-/* 自定义工具类：替代任意值，避免 tailwindcss/no-arbitrary-value 规则报错 */
-@utility grid-rows-0fr {
-  grid-template-rows: 0fr;
-}
+/* 共享自定义工具类和基础样式 */
+@import '@nicenote/tokens/styles/shared-utilities.css';
+@import '@nicenote/tokens/styles/shared-base.css';
 
-@utility grid-rows-1fr {
-  grid-template-rows: 1fr;
-}
-
-@utility transition-grid {
-  transition-property: grid-template-rows;
-}
-
-@utility transition-transform-opacity {
-  transition-property: transform, opacity;
-}
-
+/* Web 专用工具类 */
 @utility shadow-toggle {
   box-shadow:
     0 4px 16px -4px rgba(0, 0, 0, 0.15),
     0 2px 8px -2px rgba(0, 0, 0, 0.1);
-}
-
-@layer base {
-  input,
-  textarea,
-  select {
-    @apply border border-border rounded-md;
-  }
-
-  input:focus,
-  textarea:focus,
-  select:focus {
-    @apply focus:outline-none;
-  }
-
-  body {
-    font-family: var(--font-sans);
-    @apply bg-background text-foreground;
-  }
 }

@@ -1,0 +1,17 @@
+/* 共享自定义工具类 — 由 @nicenote/tokens 提供 */
+
+@utility grid-rows-0fr {
+  grid-template-rows: 0fr;
+}
+
+@utility grid-rows-1fr {
+  grid-template-rows: 1fr;
+}
+
+@utility transition-grid {
+  transition-property: grid-template-rows;
+}
+
+@utility transition-transform-opacity {
+  transition-property: transform, opacity;
+}

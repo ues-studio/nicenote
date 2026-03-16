@@ -1,19 +1,20 @@
 import type { StateCreator } from 'zustand'
 
-import type { SearchResult } from '../../bindings/tauri'
-import { AppService } from '../../bindings/tauri'
+import type { NoteSearchResult } from '@nicenote/shared'
+
+import { getCurrentRepo } from '../../lib/repository-provider'
 import type { DesktopStore } from '../useDesktopStore'
 
 export interface SearchSlice {
   searchOpen: boolean
   searchQuery: string
-  searchResults: SearchResult[]
+  searchResults: NoteSearchResult[]
   isSearching: boolean
   setSearchOpen: (open: boolean) => void
   search: (query: string) => Promise<void>
 }
 
-export const createSearchSlice: StateCreator<DesktopStore, [], [], SearchSlice> = (set, get) => ({
+export const createSearchSlice: StateCreator<DesktopStore, [], [], SearchSlice> = (set, _get) => ({
   searchOpen: false,
   searchQuery: '',
   searchResults: [],
@@ -27,16 +28,16 @@ export const createSearchSlice: StateCreator<DesktopStore, [], [], SearchSlice> 
   },
 
   search: async (query: string) => {
-    const { currentFolder } = get()
     set({ searchQuery: query })
-    if (!query.trim() || !currentFolder) {
+    const repo = getCurrentRepo()
+    if (!query.trim() || !repo) {
       set({ searchResults: [] })
       return
     }
 
     set({ isSearching: true })
     try {
-      const results = await AppService.SearchNotes(currentFolder, query)
+      const results = await repo.search({ q: query, limit: 20 })
       set({ searchResults: results })
     } catch (err) {
       console.error('搜索失败:', err)

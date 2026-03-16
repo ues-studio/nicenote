@@ -2,50 +2,28 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { formatDistanceToNow } from 'date-fns'
-import { Download, FileText, Plus } from 'lucide-react'
-import { useShallow } from 'zustand/react/shallow'
+import { FileText, Plus } from 'lucide-react'
 
 import type { EditorLabels } from '@nicenote/editor'
 import { NicenoteEditor } from '@nicenote/editor'
-import type { TagSelect } from '@nicenote/shared'
+import { SaveStateIndicator } from '@nicenote/ui'
 
+import { useAppShell } from '../context'
 import { useMinuteTicker } from '../hooks/useMinuteTicker'
-import { WEB_ICON_SM_CLASS } from '../lib/class-names'
+import { ICON_SM_CLASS } from '../lib/class-names'
 import { getDateLocale } from '../lib/date-locale'
-import { downloadBlob, exportNoteAsMarkdown } from '../lib/export'
-import { useNoteStore } from '../store/useNoteStore'
 
 import { TagInput } from './TagInput'
 
 interface NoteEditorPaneProps {
   inert?: boolean
-  isMobile: boolean
 }
 
-export function NoteEditorPane({ inert, isMobile }: NoteEditorPaneProps) {
+export function NoteEditorPane({ inert }: NoteEditorPaneProps) {
   const { t, i18n } = useTranslation()
   useMinuteTicker()
-  const { notes, selectedNoteId, createNote, updateNote, tags, noteTags } = useNoteStore(
-    useShallow((s) => ({
-      notes: s.notes,
-      selectedNoteId: s.selectedNoteId,
-      createNote: s.createNote,
-      updateNote: s.updateNote,
-      tags: s.tags,
-      noteTags: s.noteTags,
-    }))
-  )
 
-  const currentNote = useMemo(
-    () => notes.find((n) => n.id === selectedNoteId) ?? null,
-    [notes, selectedNoteId]
-  )
-
-  const currentNoteTags = useMemo(() => {
-    if (!currentNote) return []
-    const tagIds = noteTags[currentNote.id] ?? []
-    return tagIds.map((id) => tags.find((t) => t.id === id)).filter(Boolean) as TagSelect[]
-  }, [currentNote, tags, noteTags])
+  const { currentNote, createNote, updateNote, isMobile, saveState } = useAppShell()
 
   const editorLabels: EditorLabels = useMemo(
     () => ({
@@ -106,6 +84,16 @@ export function NoteEditorPane({ inert, isMobile }: NoteEditorPaneProps) {
     [currentNote, updateNote]
   )
 
+  // 保存状态标签
+  const saveStatusLabels = useMemo(
+    () => ({
+      saving: t('saveStatus.saving'),
+      saved: t('saveStatus.saved'),
+      unsaved: t('saveStatus.unsaved'),
+    }),
+    [t]
+  )
+
   return (
     <main className="flex min-w-0 flex-1 flex-col" {...(inert ? { inert: true } : {})}>
       {currentNote ? (
@@ -121,23 +109,10 @@ export function NoteEditorPane({ inert, isMobile }: NoteEditorPaneProps) {
             />
             <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
               <span>{updatedAtLabel}</span>
-              <button
-                onClick={() => {
-                  const blob = exportNoteAsMarkdown(
-                    currentNote as Parameters<typeof exportNoteAsMarkdown>[0]
-                  )
-                  const filename = `${currentNote.title || 'Untitled'}.md`
-                  downloadBlob(blob, filename)
-                }}
-                aria-label={t('export.exportNote')}
-                className="ml-auto rounded p-1 text-muted-foreground/50 transition-colors hover:text-foreground"
-                title={t('export.exportNote')}
-              >
-                <Download className={WEB_ICON_SM_CLASS} />
-              </button>
+              {saveState && <SaveStateIndicator state={saveState} labels={saveStatusLabels} />}
             </div>
             <div className="mt-3">
-              <TagInput noteId={currentNote.id} noteTags={currentNoteTags} />
+              <TagInput noteId={currentNote.id} noteTags={currentNote.tags} />
             </div>
           </div>
           <div className="flex-1 overflow-hidden px-8 pb-8">
@@ -162,7 +137,7 @@ export function NoteEditorPane({ inert, isMobile }: NoteEditorPaneProps) {
             aria-label={t('editor.createNewNoteLabel')}
             className="mt-6 flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
-            <Plus className={WEB_ICON_SM_CLASS} />
+            <Plus className={ICON_SM_CLASS} />
             {t('editor.createNewNote')}
           </button>
         </div>

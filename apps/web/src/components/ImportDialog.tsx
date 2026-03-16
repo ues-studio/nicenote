@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 
 import { FileUp, Upload, X } from 'lucide-react'
 
-import { WEB_ICON_SM_CLASS } from '../lib/class-names'
+import { ICON_SM_CLASS } from '@nicenote/app-shell'
+
 import { type ParsedNote, parseMarkdownFile } from '../lib/import'
 import { useNoteStore } from '../store/useNoteStore'
 
@@ -91,7 +92,7 @@ function ImportDialogInner({ onClose }: { onClose: () => void }) {
             onClick={onClose}
             className="rounded p-1 text-muted-foreground hover:text-foreground"
           >
-            <X className={WEB_ICON_SM_CLASS} />
+            <X className={ICON_SM_CLASS} />
           </button>
         </div>
 

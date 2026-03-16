@@ -1,0 +1,20 @@
+/* 共享基础样式 — 由 @nicenote/tokens 提供 */
+
+@layer base {
+  input,
+  textarea,
+  select {
+    @apply border border-border rounded-md;
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus {
+    @apply focus:outline-none;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    @apply bg-background text-foreground;
+  }
+}

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 
 import { X } from 'lucide-react'
 
-import { WEB_ICON_SM_CLASS } from '../lib/class-names'
+import { ICON_SM_CLASS } from '../lib/class-names'
 import { formatShortcut, SHORTCUTS } from '../lib/shortcuts'
 
 interface ShortcutsHelpModalProps {
@@ -52,7 +52,7 @@ export function ShortcutsHelpModal({ open, onClose }: ShortcutsHelpModalProps) {
             className="rounded p-1 text-muted-foreground hover:text-foreground"
             aria-label={t('shortcuts.close')}
           >
-            <X className={WEB_ICON_SM_CLASS} />
+            <X className={ICON_SM_CLASS} />
           </button>
         </div>
 

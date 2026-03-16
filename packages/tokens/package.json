@@ -12,10 +12,13 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./styles/shared-utilities.css": "./src/styles/shared-utilities.css",
+    "./styles/shared-base.css": "./src/styles/shared-base.css"
   },
   "files": [
-    "dist"
+    "dist",
+    "src/styles"
   ],
   "main": "./dist/index.js",
   "private": true,
