@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-const isoDateTimeSchema = z.string().datetime({ offset: true })
+import { isoDateTimeSchema } from './common'
 
 const MAX_TAG_NAME_LENGTH = 50
 const TAG_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/

@@ -5,7 +5,7 @@
 export function debounce<T extends (...args: any[]) => any>(
   fn: T,
   wait: number
-): T & { cancel: () => void } {
+): T & { cancel: () => void; flush: () => void } {
   let timer: ReturnType<typeof setTimeout> | null = null
   let lastArgs: Parameters<T> | null = null
   let lastContext: unknown = null
@@ -46,5 +46,16 @@ export function debounce<T extends (...args: any[]) => any>(
     lastContext = null
   }
 
-  return debounced as T & { cancel: () => void }
+  /** 立即执行待处理的调用（如果有） */
+  debounced.flush = function () {
+    if (timer !== null) {
+      clearTimeout(timer)
+      timer = null
+    }
+    if (lastArgs !== null) {
+      invokeFunc(lastContext, lastArgs)
+    }
+  }
+
+  return debounced as T & { cancel: () => void; flush: () => void }
 }

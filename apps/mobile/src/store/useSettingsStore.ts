@@ -1,8 +1,7 @@
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 
-export type Theme = 'light' | 'dark' | 'system'
-export type Language = 'en' | 'zh'
+import type { Language, Theme } from '@nicenote/domain'
 
 export interface SettingsStoreState {
   theme: Theme

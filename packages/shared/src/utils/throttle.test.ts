@@ -93,4 +93,24 @@ describe('throttle', () => {
     expect(fn).toHaveBeenCalledTimes(1)
     expect(fn).toHaveBeenCalledWith('first')
   })
+
+  it('leading=false + trailing=false: 首个窗口期完全静默，后续窗口正常触发', () => {
+    const fn = vi.fn()
+    const throttled = throttle(fn, 100, { leading: false, trailing: false })
+
+    // 首次调用：leading=false 抑制首个 leading 调用
+    throttled('a')
+    expect(fn).not.toHaveBeenCalled()
+
+    // 窗口内后续调用：trailing=false 抑制 trailing
+    vi.advanceTimersByTime(50)
+    throttled('b')
+    vi.advanceTimersByTime(50)
+    expect(fn).not.toHaveBeenCalled()
+
+    // 窗口关闭后再次调用：lastTime 已设置，leading 抑制不再生效
+    throttled('c')
+    expect(fn).toHaveBeenCalledTimes(1)
+    expect(fn).toHaveBeenCalledWith('c')
+  })
 })

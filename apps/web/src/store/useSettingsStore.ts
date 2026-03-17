@@ -1,9 +1,8 @@
 import { create } from 'zustand'
 
-import { applyThemeToDOM, i18n } from '@nicenote/app-shell'
-
-export type Theme = 'light' | 'dark' | 'system'
-type Language = 'en' | 'zh'
+import { applyLanguageToDOM, applyThemeToDOM } from '@nicenote/app-shell'
+import type { Language, Theme } from '@nicenote/domain'
+import { LANG_STORAGE_KEY } from '@nicenote/shared'
 
 interface SettingsStore {
   theme: Theme
@@ -55,17 +54,11 @@ function cleanupSystemListener() {
 // 语言
 // ============================================================
 
-const LANG_STORAGE_KEY = 'nicenote-lang'
-
 function resolveInitialLanguage(): Language {
-  const lang = i18n.language
-  return lang === 'zh' ? 'zh' : 'en'
-}
-
-function applyLanguage(lang: Language) {
-  void i18n.changeLanguage(lang)
-  localStorage.setItem(LANG_STORAGE_KEY, lang)
-  document.documentElement.lang = lang
+  if (typeof localStorage === 'undefined') return 'en'
+  const saved = localStorage.getItem(LANG_STORAGE_KEY)
+  if (saved === 'zh' || saved === 'en') return saved
+  return 'en'
 }
 
 // ============================================================
@@ -102,7 +95,8 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   },
 
   setLanguage: (lang: Language) => {
-    applyLanguage(lang)
+    applyLanguageToDOM(lang)
+    localStorage.setItem(LANG_STORAGE_KEY, lang)
     set({ language: lang })
   },
 }))

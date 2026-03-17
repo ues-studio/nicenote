@@ -96,22 +96,15 @@ export function WebAppShellProvider({ children }: { children: React.ReactNode })
   const { theme, setTheme, language, setLanguage } = useSettingsStore()
   const { toasts, addToast, removeToast } = useToastStore()
 
-  // 标签 ID→name 映射
-  const tagMap = useMemo(() => {
-    const map = new Map<string, string>()
+  // 标签双向映射（单次遍历构建 ID→name 和 name→ID）
+  const { tagMap, tagNameToId } = useMemo(() => {
+    const idToName = new Map<string, string>()
+    const nameToId = new Map<string, string>()
     for (const tag of rawTags) {
-      map.set(tag.id, tag.name)
+      idToName.set(tag.id, tag.name)
+      nameToId.set(tag.name, tag.id)
     }
-    return map
-  }, [rawTags])
-
-  // 标签 name→ID 映射
-  const tagNameToId = useMemo(() => {
-    const map = new Map<string, string>()
-    for (const tag of rawTags) {
-      map.set(tag.name, tag.id)
-    }
-    return map
+    return { tagMap: idToName, tagNameToId: nameToId }
   }, [rawTags])
 
   // 转换笔记为 AppNoteItem[]
@@ -212,7 +205,7 @@ export function WebAppShellProvider({ children }: { children: React.ReactNode })
       theme,
       setTheme,
       language,
-      setLanguage: (lang: string) => setLanguage(lang as 'en' | 'zh'),
+      setLanguage,
       toasts,
       addToast,
       removeToast,

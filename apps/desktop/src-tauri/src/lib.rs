@@ -5,7 +5,7 @@ mod services;
 use std::path::PathBuf;
 
 use notify::RecommendedWatcher;
-use parking_lot::Mutex;
+use parking_lot::{Mutex, RwLock};
 use rusqlite::Connection;
 use tauri::Manager;
 
@@ -18,7 +18,8 @@ use services::search_index::SearchIndex;
 pub struct AppState {
     pub db: Mutex<Connection>,
     pub watcher: Mutex<Option<RecommendedWatcher>>,
-    pub search_index: Mutex<SearchIndex>,
+    /// 搜索索引使用 RwLock：搜索（读操作）可并发，仅索引更新（写操作）互斥
+    pub search_index: RwLock<SearchIndex>,
 }
 
 // ============================================================
@@ -39,15 +40,17 @@ pub fn run() {
                 .unwrap_or_else(|_| PathBuf::from("."))
                 .join("cache.db");
 
-            std::fs::create_dir_all(db_path.parent().unwrap()).ok();
+            if let Some(parent) = db_path.parent() {
+                std::fs::create_dir_all(parent).ok();
+            }
 
-            let conn = db::open(db_path.to_str().unwrap())
-                .expect("初始化 SQLite 缓存数据库失败");
+            let db_path_str = db_path.to_str().ok_or("缓存路径包含非 UTF-8 字符")?;
+            let conn = db::open(db_path_str)?;
 
             app.manage(AppState {
                 db: Mutex::new(conn),
                 watcher: Mutex::new(None),
-                search_index: Mutex::new(SearchIndex::default()),
+                search_index: RwLock::new(SearchIndex::default()),
             });
 
             // 开发模式下自动打开 DevTools

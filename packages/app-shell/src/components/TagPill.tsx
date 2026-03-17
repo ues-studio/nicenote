@@ -23,7 +23,11 @@ export function TagPill({ label, color, onRemove, removeLabel, className }: TagP
         !color && 'bg-accent text-accent-foreground',
         className
       )}
-      style={color ? { backgroundColor: color + '20', color } : undefined}
+      style={
+        color
+          ? { backgroundColor: `color-mix(in srgb, ${color} 12%, transparent)`, color }
+          : undefined
+      }
     >
       {label}
       {onRemove && (

@@ -7,6 +7,10 @@ use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
 
 use super::frontmatter::{self, Frontmatter};
+use super::utils::{
+    format_modified_time, is_hidden_entry, is_markdown_file, validate_folder_path,
+    validate_note_path,
+};
 
 // ============================================================
 // 对外暴露的数据类型（与前端 TS 接口一一对应）
@@ -38,6 +42,7 @@ pub struct NoteContent {
 
 /// 递归列出 folder_path 下所有 .md 文件的元信息
 pub fn list_notes(folder_path: &str) -> Result<Vec<NoteFile>> {
+    validate_folder_path(folder_path)?;
     let mut notes = Vec::new();
     for entry in WalkDir::new(folder_path)
         .follow_links(false)
@@ -45,17 +50,10 @@ pub fn list_notes(folder_path: &str) -> Result<Vec<NoteFile>> {
         .filter_map(|e| e.ok())
     {
         let path = entry.path();
-        // 跳过隐藏目录（.git, .trash 等）
-        if entry
-            .file_name()
-            .to_str()
-            .map(|s| s.starts_with('.'))
-            .unwrap_or(false)
-            && path != Path::new(folder_path)
-        {
+        if is_hidden_entry(entry.file_name(), path, Path::new(folder_path)) {
             continue;
         }
-        if path.extension().and_then(|e| e.to_str()) == Some("md") {
+        if is_markdown_file(path) {
             if let Ok(meta) = read_meta(path) {
                 notes.push(meta);
             }
@@ -77,6 +75,7 @@ fn read_meta(path: &Path) -> Result<NoteFile> {
 
 /// 读取笔记完整内容（含正文和 frontmatter）
 pub fn get_note_content(path: &str) -> Result<NoteContent> {
+    validate_note_path(path)?;
     let p = Path::new(path);
     let raw = fs::read_to_string(p).context("读取笔记文件失败")?;
     let (fm, body) = frontmatter::parse(&raw);
@@ -89,15 +88,7 @@ pub fn get_note_content(path: &str) -> Result<NoteContent> {
 }
 
 fn build_note_file(path: &Path, fm: &Frontmatter, body: &str) -> Result<NoteFile> {
-    let stem = path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("Untitled");
-    let title = fm
-        .title
-        .clone()
-        .filter(|t| !t.is_empty())
-        .unwrap_or_else(|| frontmatter::title_from_filename(stem));
+    let title = frontmatter::resolve_title_from_path(fm, path);
 
     // 摘要：取正文前 120 字符（去掉 Markdown 标记符）
     let summary_raw = body
@@ -108,18 +99,7 @@ fn build_note_file(path: &Path, fm: &Frontmatter, body: &str) -> Result<NoteFile
         .trim_start_matches(|c: char| !c.is_alphanumeric() && !c.is_whitespace());
     let summary: String = summary_raw.chars().take(120).collect();
 
-    let metadata = fs::metadata(path)?;
-    let updated_at = metadata
-        .modified()
-        .ok()
-        .and_then(|t| {
-            t.duration_since(std::time::UNIX_EPOCH)
-                .ok()
-                .map(|d| chrono::DateTime::from_timestamp(d.as_secs() as i64, 0))
-        })
-        .flatten()
-        .map(|dt| dt.format("%Y-%m-%dT%H:%M:%SZ").to_string())
-        .unwrap_or_else(|| Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string());
+    let updated_at = format_modified_time(path);
 
     let created_at = fm.created_at.clone().unwrap_or_else(|| updated_at.clone());
 
@@ -139,8 +119,9 @@ fn build_note_file(path: &Path, fm: &Frontmatter, body: &str) -> Result<NoteFile
 
 /// 保存笔记正文和标签（保留原有 frontmatter 中的 title/created_at）
 pub fn save_note(path: &str, content: &str, tags: &[String]) -> Result<()> {
+    validate_note_path(path)?;
     let p = Path::new(path);
-    let raw = fs::read_to_string(p).unwrap_or_default();
+    let raw = fs::read_to_string(p).context("保存前读取原文件失败")?;
     let (mut fm, _) = frontmatter::parse(&raw);
     fm.tags = tags.to_vec();
 
@@ -153,6 +134,7 @@ pub fn save_note(path: &str, content: &str, tags: &[String]) -> Result<()> {
 // ============================================================
 
 pub fn create_note(folder_path: &str) -> Result<NoteFile> {
+    validate_folder_path(folder_path)?;
     let folder = Path::new(folder_path);
     fs::create_dir_all(folder)?;
 
@@ -179,6 +161,7 @@ pub fn create_note(folder_path: &str) -> Result<NoteFile> {
 // ============================================================
 
 pub fn rename_note(old_path: &str, new_title: &str) -> Result<NoteFile> {
+    validate_note_path(old_path)?;
     let old = Path::new(old_path);
     let parent = old.parent().context("无法获取父目录")?;
 
@@ -187,7 +170,7 @@ pub fn rename_note(old_path: &str, new_title: &str) -> Result<NoteFile> {
     let new_path = find_unique_path(parent, &safe_name, "md");
 
     // 先更新 frontmatter 中的 title
-    let raw = fs::read_to_string(old).unwrap_or_default();
+    let raw = fs::read_to_string(old).context("重命名前读取原文件失败")?;
     let (mut fm, body) = frontmatter::parse(&raw);
     fm.title = Some(new_title.to_string());
     let new_raw = frontmatter::write(&fm, &body);
@@ -195,7 +178,7 @@ pub fn rename_note(old_path: &str, new_title: &str) -> Result<NoteFile> {
     // 写入新文件路径，删除旧文件
     atomic_write(&new_path, &new_raw)?;
     if old != new_path {
-        fs::remove_file(old).ok();
+        fs::remove_file(old).context("重命名后删除原文件失败")?;
     }
 
     read_meta(&new_path)
@@ -206,6 +189,7 @@ pub fn rename_note(old_path: &str, new_title: &str) -> Result<NoteFile> {
 // ============================================================
 
 pub fn delete_note(path: &str) -> Result<()> {
+    validate_note_path(path)?;
     let p = Path::new(path);
     let parent = p.parent().context("无法获取父目录")?;
     let trash_dir = parent.join(".trash");
@@ -229,36 +213,66 @@ pub fn delete_note(path: &str) -> Result<()> {
 fn atomic_write(path: &Path, content: &str) -> Result<()> {
     let tmp = path.with_extension("tmp");
     fs::write(&tmp, content)?;
-    fs::rename(&tmp, path)?;
+    if let Err(e) = fs::rename(&tmp, path) {
+        // rename 失败时清理临时文件，避免磁盘残留
+        let _ = fs::remove_file(&tmp);
+        return Err(e.into());
+    }
     Ok(())
 }
 
 /// 在 dir 中寻找不冲突的文件名：name.ext → name 2.ext → name 3.ext
 fn find_unique_path(dir: &Path, name: &str, ext: &str) -> PathBuf {
+    use std::collections::HashSet;
+
     let candidate = dir.join(format!("{}.{}", name, ext));
     if !candidate.exists() {
         return candidate;
     }
-    let mut i = 2;
-    loop {
-        let candidate = dir.join(format!("{} {}.{}", name, i, ext));
-        if !candidate.exists() {
-            return candidate;
+
+    // 读取目录一次，在内存中查找空位，避免逐个 exists() 系统调用
+    let existing: HashSet<String> = fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .filter_map(|e| e.ok())
+        .filter_map(|e| e.file_name().into_string().ok())
+        .collect();
+
+    for i in 2..=10000 {
+        let filename = format!("{} {}.{}", name, i, ext);
+        if !existing.contains(&filename) {
+            return dir.join(filename);
         }
-        i += 1;
     }
+    // 极端情况下使用时间戳确保唯一性
+    dir.join(format!(
+        "{} {}.{}",
+        name,
+        Utc::now().timestamp_millis(),
+        ext
+    ))
 }
 
-/// 替换文件名中的非法字符
+/// 替换文件名中的非法字符（含控制字符和 null 字节）
 fn sanitize_filename(name: &str) -> String {
-    name.chars()
+    // 跳过首尾空白字符，单次遍历完成过滤+替换，避免多余分配
+    let trimmed = name.trim();
+    if trimmed.is_empty() {
+        return "Untitled".to_string();
+    }
+    let sanitized: String = trimmed
+        .chars()
+        .filter(|c| !c.is_control())
         .map(|c| match c {
             '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '-',
             _ => c,
         })
-        .collect::<String>()
-        .trim()
-        .to_string()
+        .collect();
+    if sanitized.is_empty() {
+        "Untitled".to_string()
+    } else {
+        sanitized
+    }
 }
 
 // ============================================================
@@ -276,6 +290,7 @@ pub struct FolderNode {
 
 /// 递归构建目录树（只保留含 .md 文件的目录）
 pub fn get_folder_tree(root: &str) -> Result<FolderNode> {
+    validate_folder_path(root)?;
     build_tree(Path::new(root))
 }
 
@@ -292,15 +307,18 @@ fn build_tree(dir: &Path) -> Result<FolderNode> {
     if let Ok(entries) = fs::read_dir(dir) {
         let mut dirs: Vec<PathBuf> = Vec::new();
         for entry in entries.flatten() {
-            let path = entry.path();
-            let fname = entry.file_name().to_string_lossy().to_string();
+            let fname = entry.file_name();
+            let fname_str = fname.to_string_lossy();
             // 跳过隐藏目录
-            if fname.starts_with('.') {
+            if fname_str.starts_with('.') {
                 continue;
             }
-            if path.is_dir() {
+            // 使用 DirEntry::file_type() 复用缓存元数据，避免额外 stat() 系统调用
+            let Ok(file_type) = entry.file_type() else { continue };
+            let path = entry.path();
+            if file_type.is_dir() {
                 dirs.push(path);
-            } else if path.extension().and_then(|e| e.to_str()) == Some("md") {
+            } else if is_markdown_file(&path) {
                 note_count += 1;
             }
         }

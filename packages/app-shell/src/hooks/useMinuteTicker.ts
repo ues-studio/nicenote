@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
-const MINUTE_TICK_INTERVAL_MS = 60000
+export const MINUTE_TICK_INTERVAL_MS = 60_000
 
 let tick = 0
 const listeners = new Set<() => void>()
@@ -8,7 +8,13 @@ let timer: ReturnType<typeof setInterval> | null = null
 
 function emitTick() {
   tick += 1
-  listeners.forEach((listener) => listener())
+  listeners.forEach((listener) => {
+    try {
+      listener()
+    } catch {
+      // 单个 listener 异常不影响其他 listener 的通知
+    }
+  })
 }
 
 function startTicker() {
@@ -22,7 +28,8 @@ function stopTicker() {
   timer = null
 }
 
-function subscribe(listener: () => void) {
+/** 外部 store 订阅函数（供 useSyncExternalStore 和测试使用） */
+export function subscribe(listener: () => void) {
   listeners.add(listener)
   startTicker()
 
@@ -34,8 +41,16 @@ function subscribe(listener: () => void) {
   }
 }
 
-function getSnapshot() {
+/** 外部 store 快照函数（供 useSyncExternalStore 和测试使用） */
+export function getSnapshot() {
   return tick
+}
+
+/** 重置内部状态（仅供测试使用） */
+export function _resetForTesting() {
+  tick = 0
+  listeners.clear()
+  stopTicker()
 }
 
 export function useMinuteTicker() {

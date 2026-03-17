@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 
 import { Check, Keyboard, Languages, Monitor, Moon, Search, Settings, Sun } from 'lucide-react'
 
+import type { Language } from '@nicenote/domain'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,8 +20,6 @@ const LANGUAGES = [
   { code: 'en', nativeName: 'English', englishName: 'English' },
   { code: 'zh', nativeName: '中文', englishName: 'Chinese' },
 ] as const
-
-type LanguageCode = (typeof LANGUAGES)[number]['code']
 
 interface SettingsDropdownProps {
   onShowShortcuts?: () => void
@@ -55,13 +54,16 @@ export function SettingsDropdown({
   useEffect(() => {
     if (!pickerOpen) return
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleClose()
+      if (e.key === 'Escape') {
+        setPickerOpen(false)
+        setSearch('')
+      }
     }
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
   }, [pickerOpen])
 
-  const handleSelectLanguage = (code: LanguageCode) => {
+  const handleSelectLanguage = (code: Language) => {
     setLanguage(code)
     handleClose()
   }

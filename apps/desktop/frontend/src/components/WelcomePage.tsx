@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { memo, useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { ChevronRight, Clock, FolderOpen } from 'lucide-react'
@@ -9,25 +9,18 @@ import { useDesktopStore } from '../store/useDesktopStore'
 export function WelcomePage() {
   const { t } = useTranslation()
 
-  const { recentFolders, openFolder } = useDesktopStore(
+  const { recentFolders, openFolder, loadRecentFolders } = useDesktopStore(
     useShallow((s) => ({
       recentFolders: s.recentFolders,
       openFolder: s.openFolder,
+      loadRecentFolders: s.loadRecentFolders,
     }))
   )
 
   // 加载最近文件夹列表
   useEffect(() => {
-    import('../bindings/tauri').then(({ AppService }) => {
-      AppService.GetRecentFolders()
-        .then((folders) => {
-          useDesktopStore.setState({ recentFolders: folders })
-        })
-        .catch(() => {
-          // Tauri 运行时未就绪时忽略错误
-        })
-    })
-  }, [])
+    loadRecentFolders()
+  }, [loadRecentFolders])
 
   const handleOpenFolder = useCallback(() => {
     openFolder()
@@ -41,7 +34,7 @@ export function WelcomePage() {
   )
 
   // 展示最多 10 个最近文件夹
-  const displayFolders = recentFolders.slice(0, 10)
+  const displayFolders = useMemo(() => recentFolders.slice(0, 10), [recentFolders])
 
   return (
     <div className="flex h-screen flex-col items-center justify-center bg-background">
@@ -115,11 +108,7 @@ export function WelcomePage() {
             </div>
             <ul className="space-y-1">
               {displayFolders.map((folder) => (
-                <RecentFolderItem
-                  key={folder}
-                  path={folder}
-                  onClick={() => handleOpenRecent(folder)}
-                />
+                <RecentFolderItem key={folder} path={folder} onClick={handleOpenRecent} />
               ))}
             </ul>
           </div>
@@ -137,17 +126,19 @@ export function WelcomePage() {
 
 interface RecentFolderItemProps {
   path: string
-  onClick: () => void
+  onClick: (path: string) => void
 }
 
-function RecentFolderItem({ path, onClick }: RecentFolderItemProps) {
+const RecentFolderItem = memo(function RecentFolderItem({ path, onClick }: RecentFolderItemProps) {
   const name = path.split(/[\\/]/).filter(Boolean).pop() ?? path
   const displayPath = path.replace(/^\/Users\/[^/]+/, '~').replace(/^C:\\Users\\[^\\]+/, '~')
+
+  const handleClick = useCallback(() => onClick(path), [onClick, path])
 
   return (
     <li>
       <button
-        onClick={onClick}
+        onClick={handleClick}
         className="group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
       >
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted">
@@ -161,4 +152,4 @@ function RecentFolderItem({ path, onClick }: RecentFolderItemProps) {
       </button>
     </li>
   )
-}
+})

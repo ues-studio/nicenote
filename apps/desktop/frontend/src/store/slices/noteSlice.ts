@@ -8,12 +8,19 @@ import type { DesktopStore } from '../useDesktopStore'
 
 // 防抖的保存函数（800ms）
 const debouncedSaveIpc = debounce(
-  async (path: string, content: string, tags: string[], onDone: () => void) => {
+  async (
+    path: string,
+    content: string,
+    tags: string[],
+    onDone: () => void,
+    onError: () => void
+  ) => {
     try {
-      await AppService.SaveNote(path, content, tags)
+      await AppService.saveNote(path, content, tags)
       onDone()
     } catch (err) {
       console.error('保存笔记失败:', err)
+      onError()
     }
   },
   800
@@ -21,13 +28,19 @@ const debouncedSaveIpc = debounce(
 
 // 防抖的重命名函数（1500ms）
 const debouncedRenameIpc = debounce(
-  async (oldPath: string, newTitle: string, onSuccess: (updatedNote: NoteFile) => void) => {
+  async (
+    oldPath: string,
+    newTitle: string,
+    onSuccess: (updatedNote: NoteFile) => void,
+    onError: (originalTitle: string) => void
+  ) => {
     try {
-      const updated = await AppService.RenameNote(oldPath, newTitle)
+      const updated = await AppService.renameNote(oldPath, newTitle)
       if (!updated) return
       onSuccess(updated)
     } catch (err) {
       console.error('重命名笔记失败:', err)
+      onError(oldPath)
     }
   },
   1500
@@ -58,7 +71,7 @@ export const createNoteSlice: StateCreator<DesktopStore, [], [], NoteSlice> = (s
 
     set({ isLoading: true })
     try {
-      const notes = await AppService.ListNotes(currentFolder)
+      const notes = await AppService.listNotes(currentFolder)
       notes.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       set({ notes })
     } catch (err) {
@@ -69,8 +82,11 @@ export const createNoteSlice: StateCreator<DesktopStore, [], [], NoteSlice> = (s
   },
 
   openNote: async (path: string) => {
+    // 切换笔记前刷新待处理的保存/重命名操作，防止数据丢失
+    debouncedSaveIpc.flush()
+    debouncedRenameIpc.flush()
     try {
-      const content = await AppService.GetNoteContent(path)
+      const content = await AppService.getNoteContent(path)
       set({ activeNote: content })
     } catch (err) {
       console.error('打开笔记失败:', err)
@@ -86,10 +102,18 @@ export const createNoteSlice: StateCreator<DesktopStore, [], [], NoteSlice> = (s
       activeNote: { ...activeNote, content },
     })
 
-    debouncedSaveIpc(activeNote.path, content, tags, () => {
-      set({ saveState: 'saved' })
-      get().loadNotes()
-    })
+    debouncedSaveIpc(
+      activeNote.path,
+      content,
+      tags,
+      () => {
+        set({ saveState: 'saved' })
+        void get().loadNotes()
+      },
+      () => {
+        set({ saveState: 'unsaved' })
+      }
+    )
   },
 
   createNote: async () => {
@@ -97,7 +121,7 @@ export const createNoteSlice: StateCreator<DesktopStore, [], [], NoteSlice> = (s
     if (!currentFolder) return
 
     try {
-      const newNote = await AppService.CreateNote(currentFolder)
+      const newNote = await AppService.createNote(currentFolder)
       if (!newNote) return
       set((state) => ({ notes: [newNote, ...state.notes] }))
       await get().openNote(newNote.path)
@@ -112,20 +136,28 @@ export const createNoteSlice: StateCreator<DesktopStore, [], [], NoteSlice> = (s
 
     set({ activeNote: { ...activeNote, title: newTitle } })
 
-    debouncedRenameIpc(activeNote.path, newTitle, (updated) => {
-      set((state) => {
-        const updatedActiveNote = state.activeNote ? { ...state.activeNote, ...updated } : null
-        const notes = state.notes.map((n) =>
-          n.path === activeNote.path ? { ...n, ...updated } : n
-        )
-        return { activeNote: updatedActiveNote, notes }
-      })
-    })
+    debouncedRenameIpc(
+      activeNote.path,
+      newTitle,
+      (updated) => {
+        set((state) => {
+          const updatedActiveNote = state.activeNote ? { ...state.activeNote, ...updated } : null
+          const notes = state.notes.map((n) =>
+            n.path === activeNote.path ? { ...n, ...updated } : n
+          )
+          return { activeNote: updatedActiveNote, notes }
+        })
+      },
+      () => {
+        // 重命名失败时回滚：重新加载原始笔记状态
+        void get().openNote(activeNote.path)
+      }
+    )
   },
 
   deleteNote: async (path: string) => {
     try {
-      await AppService.DeleteNote(path)
+      await AppService.deleteNote(path)
       set((state) => {
         const notes = state.notes.filter((n) => n.path !== path)
         const activeNote = state.activeNote?.path === path ? null : state.activeNote

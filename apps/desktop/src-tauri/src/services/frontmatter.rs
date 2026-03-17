@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use serde::{Deserialize, Serialize};
 
 /// 笔记 frontmatter 结构（YAML）
@@ -22,13 +24,11 @@ pub fn parse(raw: &str) -> (Frontmatter, String) {
 
     // 找到第二个 --- 分隔符（跳过第一个）
     let after_first = &raw[3..];
-    let end = after_first.find("\n---");
-    if end.is_none() {
+    let Some(end_pos) = after_first.find("\n---") else {
         return (Frontmatter::default(), raw.to_string());
-    }
-    let end_pos = end.unwrap();
+    };
 
-    let yaml_str = &after_first[..end_pos].trim_start_matches('\n');
+    let yaml_str = after_first[..end_pos].trim_start_matches('\n');
     let body_start = end_pos + 4; // "\n---" 长度
     let body = after_first[body_start..].trim_start_matches('\n').to_string();
 
@@ -44,9 +44,22 @@ pub fn write(fm: &Frontmatter, body: &str) -> String {
     format!("---\n{}\n---\n\n{}", yaml_content, body)
 }
 
-/// 从文件名（不含扩展名）提取展示标题
-pub fn title_from_filename(filename: &str) -> String {
-    filename.to_string()
+/// 从 frontmatter 和文件名推导展示标题
+/// 优先使用 frontmatter 中的 title，为空时回退到文件名
+fn resolve_title(fm: &Frontmatter, filename_stem: &str) -> String {
+    fm.title
+        .clone()
+        .filter(|t| !t.is_empty())
+        .unwrap_or_else(|| filename_stem.to_string())
+}
+
+/// 从文件路径提取标题：优先使用 frontmatter title，回退到文件名 stem
+pub fn resolve_title_from_path(fm: &Frontmatter, path: &Path) -> String {
+    let stem = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("Untitled");
+    resolve_title(fm, stem)
 }
 
 #[cfg(test)]

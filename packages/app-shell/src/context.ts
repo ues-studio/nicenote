@@ -1,5 +1,7 @@
 import { createContext, useContext } from 'react'
 
+import type { Language, Theme } from '@nicenote/domain'
+
 import type {
   AppNoteDetail,
   AppNoteItem,
@@ -43,12 +45,12 @@ export interface AppShellContextValue {
   noteTagActions: NoteTagActions
 
   // ---- 主题 ----
-  theme: 'light' | 'dark' | 'system'
-  setTheme: (theme: 'light' | 'dark' | 'system') => void
+  theme: Theme
+  setTheme: (theme: Theme) => void
 
   // ---- 语言 ----
-  language: string
-  setLanguage: (lang: string) => void
+  language: Language
+  setLanguage: (lang: Language) => void
 
   // ---- Toast ----
   toasts: Toast[]

@@ -1,8 +1,6 @@
 import { z } from 'zod'
 
-z.config({ jitless: true })
-
-const isoDateTimeSchema = z.string().datetime({ offset: true })
+import { isoDateTimeSchema } from './common'
 
 const MAX_TITLE_LENGTH = 500
 const MAX_CONTENT_LENGTH = 100_000
@@ -65,7 +63,7 @@ export const noteIdParamSchema = z
   .strict()
 
 export const noteListQuerySchema = z.object({
-  cursor: z.string().datetime({ offset: true }).optional(),
+  cursor: isoDateTimeSchema.optional(),
   cursorId: z.string().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional().default(50),
   folderId: z.string().min(1).optional(),

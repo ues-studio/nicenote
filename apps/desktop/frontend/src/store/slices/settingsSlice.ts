@@ -1,6 +1,6 @@
 import type { StateCreator } from 'zustand'
 
-import { applyThemeToDOM, i18n } from '@nicenote/app-shell'
+import { applyLanguageToDOM, applyThemeToDOM } from '@nicenote/app-shell'
 
 import type { Settings } from '../../bindings/tauri'
 import { AppService } from '../../bindings/tauri'
@@ -56,7 +56,7 @@ export const createSettingsSlice: StateCreator<DesktopStore, [], [], SettingsSli
 
   toggleFavorite: async (path: string) => {
     try {
-      await AppService.ToggleFavorite(path)
+      await AppService.toggleFavorite(path)
       await get().loadFavorites()
     } catch (err) {
       console.error('切换收藏失败:', err)
@@ -65,7 +65,7 @@ export const createSettingsSlice: StateCreator<DesktopStore, [], [], SettingsSli
 
   loadFavorites: async () => {
     try {
-      const favorites = await AppService.GetFavorites()
+      const favorites = await AppService.getFavorites()
       set({ favorites })
     } catch (err) {
       console.error('加载收藏失败:', err)
@@ -74,43 +74,46 @@ export const createSettingsSlice: StateCreator<DesktopStore, [], [], SettingsSli
 
   loadSettings: async () => {
     try {
-      const settings = await AppService.GetSettings()
+      const settings = await AppService.getSettings()
       if (!settings) return
       set({ settings })
-      applyThemeToDOM(settings.theme as 'light' | 'dark' | 'system')
+      applyThemeToDOM(settings.theme)
       localStorage.setItem(THEME_STORAGE_KEY, settings.theme)
+      applyLanguageToDOM(settings.language)
       localStorage.setItem(LANG_STORAGE_KEY, settings.language)
-      // 同步 i18n 语言
-      void i18n.changeLanguage(settings.language)
     } catch (err) {
       console.error('加载设置失败:', err)
     }
   },
 
   saveSettings: async (patch: Partial<Settings>) => {
-    const current = get().settings
-    const updated: Settings = { ...current, ...patch }
+    const prev = get().settings
+    const updated: Settings = { ...prev, ...patch }
     set({ settings: updated })
     if (patch.theme) {
-      applyThemeToDOM(patch.theme as 'light' | 'dark' | 'system')
+      applyThemeToDOM(patch.theme)
       localStorage.setItem(THEME_STORAGE_KEY, patch.theme)
     }
     if (patch.language) {
+      applyLanguageToDOM(patch.language)
       localStorage.setItem(LANG_STORAGE_KEY, patch.language)
-      document.documentElement.lang = patch.language
-      // 同步 i18n 语言
-      void i18n.changeLanguage(patch.language)
     }
     try {
-      await AppService.SaveSettings(updated)
+      await AppService.saveSettings(updated)
     } catch (err) {
       console.error('保存设置失败:', err)
+      // IPC 失败时回滚设置
+      set({ settings: prev })
+      applyThemeToDOM(prev.theme)
+      localStorage.setItem(THEME_STORAGE_KEY, prev.theme)
+      applyLanguageToDOM(prev.language)
+      localStorage.setItem(LANG_STORAGE_KEY, prev.language)
     }
   },
 
   loadTagColors: async () => {
     try {
-      const tagColors = await AppService.GetTagColors()
+      const tagColors = await AppService.getTagColors()
       set({ tagColors })
     } catch (err) {
       console.error('加载标签颜色失败:', err)
@@ -118,11 +121,14 @@ export const createSettingsSlice: StateCreator<DesktopStore, [], [], SettingsSli
   },
 
   setTagColor: async (tag: string, color: string) => {
-    set((state) => ({ tagColors: { ...state.tagColors, [tag]: color } }))
+    const prevColors = get().tagColors
+    set({ tagColors: { ...prevColors, [tag]: color } })
     try {
-      await AppService.SetTagColor(tag, color)
+      await AppService.setTagColor(tag, color)
     } catch (err) {
       console.error('设置标签颜色失败:', err)
+      // IPC 失败时回滚到之前的颜色
+      set({ tagColors: prevColors })
     }
   },
 })

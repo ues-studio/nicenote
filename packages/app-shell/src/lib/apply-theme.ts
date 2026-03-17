@@ -1,9 +1,11 @@
+import type { Theme } from '@nicenote/domain'
+
 /**
  * 将主题应用到 DOM（平台无关）
  *
  * 切换 dark class 和 data-theme 属性。
  */
-export function applyThemeToDOM(theme: 'light' | 'dark' | 'system') {
+export function applyThemeToDOM(theme: Theme) {
   const root = document.documentElement
   const isDark =
     theme === 'dark' ||

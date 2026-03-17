@@ -38,7 +38,7 @@ export function throttle<T extends (...args: any[]) => any>(
     const remaining = wait - (now - lastTime)
 
     if (remaining <= 0 || remaining > wait) {
-      // 超过时间窗口，执行
+      // 超过时间窗口
       if (timer !== null) {
         clearTimeout(timer)
         timer = null
@@ -47,7 +47,18 @@ export function throttle<T extends (...args: any[]) => any>(
         lastTime = now
         result = fn.apply(this, args)
       } else {
+        // 首次调用且 leading=false：标记窗口开始，设置 trailing 定时器
         lastTime = now
+        if (trailing && timer === null) {
+          // eslint-disable-next-line
+          const ctx = this
+          const capturedArgs = args
+          timer = setTimeout(() => {
+            lastTime = Date.now()
+            timer = null
+            result = fn.apply(ctx, capturedArgs)
+          }, wait)
+        }
       }
     } else if (trailing && timer === null) {
       // 窗口内，设置 trailing 定时器

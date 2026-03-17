@@ -2,6 +2,8 @@ use tauri::AppHandle;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
+use crate::services::utils::validate_folder_path;
+
 #[tauri::command]
 pub async fn open_folder_dialog(app: AppHandle) -> Result<String, String> {
     let (tx, rx) = std::sync::mpsc::channel();
@@ -27,6 +29,10 @@ pub async fn open_folder_dialog(app: AppHandle) -> Result<String, String> {
 
 #[tauri::command]
 pub fn reveal_in_explorer(app: AppHandle, path: String) -> Result<(), String> {
+    validate_folder_path(&path).map_err(|e| e.to_string())?;
+    if !std::path::Path::new(&path).exists() {
+        return Err("路径不存在".to_string());
+    }
     app.opener()
         .reveal_item_in_dir(&path)
         .map_err(|e| e.to_string())

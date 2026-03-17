@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { isoDateTimeSchema } from './common'
+
 const MAX_FOLDER_NAME_LENGTH = 200
 
 export const folderSelectSchema = z
@@ -8,8 +10,8 @@ export const folderSelectSchema = z
     name: z.string().max(MAX_FOLDER_NAME_LENGTH),
     parentId: z.string().nullable(),
     position: z.number().int(),
-    createdAt: z.string().datetime({ offset: true }),
-    updatedAt: z.string().datetime({ offset: true }),
+    createdAt: isoDateTimeSchema,
+    updatedAt: isoDateTimeSchema,
   })
   .strict()
 

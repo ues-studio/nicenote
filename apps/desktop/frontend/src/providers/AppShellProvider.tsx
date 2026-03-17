@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { FolderTree, Star } from 'lucide-react'
@@ -7,16 +7,15 @@ import { useShallow } from 'zustand/react/shallow'
 import type {
   AppNoteDetail,
   AppNoteItem,
-  AppSearchResult,
   AppShellContextValue,
   AppTagInfo,
   NavItemConfig,
 } from '@nicenote/app-shell'
-import { AppShellContext, ICON_SM_CLASS } from '@nicenote/app-shell'
+import { AppShellContext, ICON_SM_CLASS, mapToAppSearchResults } from '@nicenote/app-shell'
+import type { Language, Theme } from '@nicenote/domain'
 
 import { getCurrentRepo } from '../adapters/repository-provider'
 import type { NoteContent, NoteFile } from '../bindings/tauri'
-import type { CurrentView } from '../store/useDesktopStore'
 import { useDesktopStore } from '../store/useDesktopStore'
 import { useSidebarStore } from '../store/useSidebarStore'
 import { useToastStore } from '../store/useToastStore'
@@ -52,7 +51,7 @@ function noteContentToAppDetail(note: NoteContent): AppNoteDetail {
 // 收藏按钮组件
 // ============================================================
 
-function FavoriteButton({ path }: { path: string }) {
+const FavoriteButton = memo(function FavoriteButton({ path }: { path: string }) {
   const isFavorite = useDesktopStore((s) => s.favorites.includes(path))
   const toggleFavorite = useDesktopStore((s) => s.toggleFavorite)
 
@@ -68,7 +67,7 @@ function FavoriteButton({ path }: { path: string }) {
       <Star className={`h-3.5 w-3.5 ${isFavorite ? 'fill-yellow-400 text-yellow-400' : ''}`} />
     </button>
   )
-}
+})
 
 // ============================================================
 // Provider
@@ -175,35 +174,28 @@ export function DesktopAppShellProvider({ children }: { children: React.ReactNod
   )
 
   // 搜索
-  const searchNotes = useCallback(async (query: string): Promise<AppSearchResult[]> => {
+  const searchNotes = useCallback(async (query: string) => {
     const repo = getCurrentRepo()
     if (!query.trim() || !repo) return []
     try {
       const results = await repo.search({ q: query, limit: 20 })
-      return results.map((r) => ({
-        id: r.id,
-        title: r.title,
-        summary: r.summary,
-        tags: r.tags ?? [],
-        updatedAt: r.updatedAt,
-        createdAt: r.createdAt,
-        snippet: r.snippet,
-      }))
-    } catch {
+      return mapToAppSearchResults(results)
+    } catch (err) {
+      console.error('搜索笔记失败:', err)
       return []
     }
   }, [])
 
   // 主题和语言
   const setTheme = useCallback(
-    (theme: 'light' | 'dark' | 'system') => {
+    (theme: Theme) => {
       store.saveSettings({ theme })
     },
     [store.saveSettings]
   )
 
   const setLanguage = useCallback(
-    (lang: string) => {
+    (lang: Language) => {
       store.saveSettings({ language: lang })
     },
     [store.saveSettings]
@@ -239,14 +231,14 @@ export function DesktopAppShellProvider({ children }: { children: React.ReactNod
         icon: <Star className={ICON_SM_CLASS} />,
         label: t('nav.favorites'),
         isActive: store.currentView === 'favorites',
-        onClick: () => store.setCurrentView('favorites' as CurrentView),
+        onClick: () => store.setCurrentView('favorites'),
       },
       {
         id: 'folder-tree',
         icon: <FolderTree className={ICON_SM_CLASS} />,
         label: t('nav.folderTree'),
         isActive: store.currentView === 'folder-tree',
-        onClick: () => store.setCurrentView('folder-tree' as CurrentView),
+        onClick: () => store.setCurrentView('folder-tree'),
       },
     ],
     [store.currentView, store.setCurrentView, t]
@@ -256,7 +248,7 @@ export function DesktopAppShellProvider({ children }: { children: React.ReactNod
   const noteListItemSlots = useMemo(
     () => ({
       renderActions: (noteId: string) => <FavoriteButton path={noteId} />,
-      onContextMenu: (noteId: string, e: React.MouseEvent) => {
+      onContextMenu: (_noteId: string, e: React.MouseEvent) => {
         e.preventDefault()
       },
     }),
@@ -279,7 +271,7 @@ export function DesktopAppShellProvider({ children }: { children: React.ReactNod
       selectedTag: store.selectedTag,
       setSelectedTag: store.setSelectedTag,
       noteTagActions,
-      theme: store.settings.theme as 'light' | 'dark' | 'system',
+      theme: store.settings.theme,
       setTheme,
       language: store.settings.language,
       setLanguage,

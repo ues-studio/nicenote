@@ -80,6 +80,37 @@ describe('debounce', () => {
     expect(() => debounced.cancel()).not.toThrow()
   })
 
+  it('flush() immediately executes the pending call', () => {
+    const fn = vi.fn()
+    const debounced = debounce(fn, 100)
+
+    debounced('a')
+    debounced('b')
+    debounced.flush()
+
+    expect(fn).toHaveBeenCalledTimes(1)
+    expect(fn).toHaveBeenCalledWith('b')
+  })
+
+  it('flush() is a no-op when nothing is pending', () => {
+    const fn = vi.fn()
+    const debounced = debounce(fn, 100)
+
+    expect(() => debounced.flush()).not.toThrow()
+    expect(fn).not.toHaveBeenCalled()
+  })
+
+  it('flush() clears the timer so it does not fire again', () => {
+    const fn = vi.fn()
+    const debounced = debounce(fn, 100)
+
+    debounced('x')
+    debounced.flush()
+    vi.advanceTimersByTime(100)
+
+    expect(fn).toHaveBeenCalledTimes(1)
+  })
+
   it('executes multiple independent debounced batches', () => {
     const fn = vi.fn()
     const debounced = debounce(fn, 100)

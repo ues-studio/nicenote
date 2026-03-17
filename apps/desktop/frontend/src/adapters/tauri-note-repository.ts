@@ -55,7 +55,7 @@ export class TauriNoteRepository implements NoteRepository {
   constructor(private folderPath: string) {}
 
   async list(query: NoteListQuery): Promise<NoteListResult> {
-    let notes = await AppService.ListNotes(this.folderPath)
+    let notes = await AppService.listNotes(this.folderPath)
 
     // 按更新时间倒序
     notes.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
@@ -86,7 +86,7 @@ export class TauriNoteRepository implements NoteRepository {
 
   async get(id: string): Promise<NoteSelect | null> {
     try {
-      const content = await AppService.GetNoteContent(id)
+      const content = await AppService.getNoteContent(id)
       return noteContentToSelect(content)
     } catch {
       return null
@@ -94,7 +94,7 @@ export class TauriNoteRepository implements NoteRepository {
   }
 
   async create(_input: NoteCreateInput): Promise<NoteSelect> {
-    const newNote = await AppService.CreateNote(this.folderPath)
+    const newNote = await AppService.createNote(this.folderPath)
     return {
       id: newNote.path,
       title: newNote.title,
@@ -110,37 +110,37 @@ export class TauriNoteRepository implements NoteRepository {
 
     // 标题变更 → 重命名文件
     if (input.title !== undefined) {
-      const renamed = await AppService.RenameNote(currentPath, input.title)
+      const renamed = await AppService.renameNote(currentPath, input.title)
       currentPath = renamed.path
     }
 
     // 内容或标签变更 → 保存文件
     if (input.content !== undefined || input.tags !== undefined) {
       // 需要获取当前笔记状态来补全参数
-      const current = await AppService.GetNoteContent(currentPath)
+      const current = await AppService.getNoteContent(currentPath)
       const content = input.content ?? current.content
       const tags = input.tags ?? current.tags
-      await AppService.SaveNote(currentPath, content, tags)
+      await AppService.saveNote(currentPath, content, tags)
     }
 
     // 返回最新状态
-    const updated = await AppService.GetNoteContent(currentPath)
+    const updated = await AppService.getNoteContent(currentPath)
     return noteContentToSelect(updated)
   }
 
   async delete(id: string): Promise<void> {
-    await AppService.DeleteNote(id)
+    await AppService.deleteNote(id)
   }
 
   async search(query: NoteSearchQuery): Promise<NoteSearchResult[]> {
-    const results = await AppService.SearchNotes(this.folderPath, query.q)
+    const results = await AppService.searchNotes(this.folderPath, query.q)
     const limit = query.limit ?? 20
     return results.slice(0, limit).map((r) => ({
       id: r.path,
       title: r.title,
       summary: generateSummary(r.snippet) || null,
       folderId: null,
-      createdAt: r.updatedAt,
+      createdAt: r.createdAt,
       updatedAt: r.updatedAt,
       snippet: r.snippet,
       tags: r.tags,

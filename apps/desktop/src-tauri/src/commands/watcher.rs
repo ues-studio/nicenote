@@ -37,7 +37,7 @@ pub fn watch_folder(
 ) -> Result<(), String> {
     // 构建初始搜索索引
     let index = SearchIndex::build(&folder_path);
-    *state.search_index.lock() = index;
+    *state.search_index.write() = index;
 
     let (tx, rx) = mpsc::channel::<(FileEventKind, String)>();
 
@@ -72,30 +72,36 @@ pub fn watch_folder(
                 Err(mpsc::RecvTimeoutError::Disconnected) => break,
             }
 
-            // 发出已超过防抖时间的事件
+            // 单次遍历收集已超过防抖时间的事件，同时从 pending 中移除
             let now = Instant::now();
-            let ready: Vec<String> = pending
-                .iter()
-                .filter(|(_, (_, t))| now.duration_since(*t) >= debounce_duration)
-                .map(|(path, _)| path.clone())
-                .collect();
+            let mut ready: Vec<(String, FileEventKind)> = Vec::new();
+            pending.retain(|path, (kind, t)| {
+                if now.duration_since(*t) >= debounce_duration {
+                    ready.push((path.clone(), *kind));
+                    false
+                } else {
+                    true
+                }
+            });
 
-            for path in ready {
-                if let Some((kind, _)) = pending.remove(&path) {
-                    // 增量更新搜索索引
-                    let app_state = app_clone.state::<AppState>();
-                    let mut idx = app_state.search_index.lock();
+            if !ready.is_empty() {
+                // 批量获取一次锁，更新搜索索引
+                let app_state = app_clone.state::<AppState>();
+                let mut idx = app_state.search_index.write();
+                for (path, kind) in &ready {
                     match kind {
                         FileEventKind::Created | FileEventKind::Modified => {
-                            idx.upsert(Path::new(&path));
+                            idx.upsert(Path::new(path));
                         }
                         FileEventKind::Deleted => {
-                            idx.remove(&path);
+                            idx.remove(path);
                         }
                     }
-                    drop(idx);
+                }
+                drop(idx);
 
-                    // 通知前端
+                // 通知前端
+                for (path, kind) in ready {
                     let payload = serde_json::json!({ "path": path });
                     let _ = app_clone.emit(kind.event_name(), &payload);
                 }

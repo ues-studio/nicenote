@@ -8,7 +8,7 @@ import type {
   NoteSelect,
   NoteUpdateInput,
 } from '@nicenote/shared'
-import { generateSummary } from '@nicenote/shared'
+import { extractSnippet, generateSummary } from '@nicenote/shared'
 
 const STORAGE_KEY = 'nicenote-notes'
 
@@ -111,7 +111,7 @@ export class LocalStorageNoteRepository implements NoteRepository {
   }
 
   async search(query: NoteSearchQuery): Promise<NoteSearchResult[]> {
-    const q = query.q.toLowerCase()
+    const searchTerm = query.q.toLowerCase()
     const limit = query.limit ?? 20
     const notes = loadAll()
     const results: NoteSearchResult[] = []
@@ -120,19 +120,12 @@ export class LocalStorageNoteRepository implements NoteRepository {
       if (results.length >= limit) break
 
       const content = note.content ?? ''
-      const titleMatch = note.title.toLowerCase().includes(q)
-      const contentIdx = content.toLowerCase().indexOf(q)
+      const titleMatch = note.title.toLowerCase().includes(searchTerm)
+      const contentIdx = content.toLowerCase().indexOf(searchTerm)
 
       if (!titleMatch && contentIdx === -1) continue
 
-      // 提取纯文本摘要片段
-      let snippet = ''
-      if (contentIdx !== -1) {
-        const start = Math.max(0, contentIdx - 40)
-        const end = Math.min(content.length, contentIdx + q.length + 60)
-        const raw = content.slice(start, end)
-        snippet = (start > 0 ? '…' : '') + raw + (end < content.length ? '…' : '')
-      }
+      const snippet = extractSnippet(content, searchTerm)
 
       results.push({
         id: note.id,

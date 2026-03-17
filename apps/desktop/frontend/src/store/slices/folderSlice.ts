@@ -8,6 +8,7 @@ export interface FolderSlice {
   currentFolder: string | null
   recentFolders: string[]
   openFolder: (path?: string) => Promise<void>
+  loadRecentFolders: () => Promise<void>
 }
 
 export const createFolderSlice: StateCreator<DesktopStore, [], [], FolderSlice> = (set, get) => ({
@@ -18,7 +19,7 @@ export const createFolderSlice: StateCreator<DesktopStore, [], [], FolderSlice> 
     try {
       let folderPath = path
       if (!folderPath) {
-        folderPath = await AppService.OpenFolderDialog()
+        folderPath = await AppService.openFolderDialog()
       }
       if (!folderPath) return
 
@@ -28,15 +29,23 @@ export const createFolderSlice: StateCreator<DesktopStore, [], [], FolderSlice> 
 
       // 非关键操作并行执行，失败不影响主流程
       await Promise.allSettled([
-        AppService.AddRecentFolder(folderPath),
-        AppService.WatchFolder(folderPath),
+        AppService.addRecentFolder(folderPath),
+        AppService.watchFolder(folderPath),
       ])
 
       await get().loadNotes()
-      const recent = await AppService.GetRecentFolders()
-      set({ recentFolders: recent })
+      await get().loadRecentFolders()
     } catch (err) {
       console.error('打开文件夹失败:', err)
+    }
+  },
+
+  loadRecentFolders: async () => {
+    try {
+      const recentFolders = await AppService.getRecentFolders()
+      set({ recentFolders })
+    } catch {
+      // Tauri 运行时未就绪时忽略错误
     }
   },
 })

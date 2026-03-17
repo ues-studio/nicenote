@@ -53,6 +53,7 @@ export type { ToastStore } from './store/create-toast-store'
 export { createToastStore } from './store/create-toast-store'
 
 // Lib
+export { applyLanguageToDOM } from './lib/apply-language'
 export { applyThemeToDOM } from './lib/apply-theme'
 export {
   ICON_BUTTON_CLASS,
@@ -62,5 +63,6 @@ export {
 } from './lib/class-names'
 export { createRepositoryProvider } from './lib/create-repository-provider'
 export { getDateLocale } from './lib/date-locale'
+export { mapToAppSearchResults } from './lib/search-utils'
 export type { ShortcutDefinition } from './lib/shortcuts'
 export { formatShortcut, matchesShortcut, MOD_KEY_LABEL, SHORTCUTS } from './lib/shortcuts'

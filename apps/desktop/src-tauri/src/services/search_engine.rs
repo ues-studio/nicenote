@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
 
 use super::frontmatter;
+use super::utils::{format_modified_time, is_hidden_entry, is_markdown_file, validate_folder_path};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -14,11 +15,14 @@ pub struct SearchResult {
     pub title: String,
     pub snippet: String,
     pub tags: Vec<String>,
+    pub created_at: String,
     pub updated_at: String,
 }
 
 /// 在 folder_path 内全文搜索（标题 + 正文，大小写不敏感）
-pub fn search_notes(folder_path: &str, query: &str) -> Result<Vec<SearchResult>> {
+/// max_results 限制返回的最大结果数
+pub fn search_notes(folder_path: &str, query: &str, max_results: usize) -> Result<Vec<SearchResult>> {
+    validate_folder_path(folder_path)?;
     if query.trim().is_empty() {
         return Ok(vec![]);
     }
@@ -31,17 +35,10 @@ pub fn search_notes(folder_path: &str, query: &str) -> Result<Vec<SearchResult>>
         .filter_map(|e| e.ok())
     {
         let path = entry.path();
-        // 跳过隐藏目录
-        if entry
-            .file_name()
-            .to_str()
-            .map(|s| s.starts_with('.'))
-            .unwrap_or(false)
-            && path != Path::new(folder_path)
-        {
+        if is_hidden_entry(entry.file_name(), path, Path::new(folder_path)) {
             continue;
         }
-        if path.extension().and_then(|e| e.to_str()) != Some("md") {
+        if !is_markdown_file(path) {
             continue;
         }
 
@@ -51,70 +48,67 @@ pub fn search_notes(folder_path: &str, query: &str) -> Result<Vec<SearchResult>>
         };
         let (fm, body) = frontmatter::parse(&raw);
 
-        let stem = path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("Untitled");
-        let title = fm
-            .title
-            .clone()
-            .filter(|t| !t.is_empty())
-            .unwrap_or_else(|| frontmatter::title_from_filename(stem));
+        let title = frontmatter::resolve_title_from_path(&fm, path);
 
-        let title_lower = title.to_lowercase();
-        let body_lower = body.to_lowercase();
-
-        if !title_lower.contains(&query_lower) && !body_lower.contains(&query_lower) {
+        let Some(snippet) = match_note(&title, &body, &query_lower) else {
             continue;
-        }
+        };
 
-        // 提取命中上下文片段（前后各 60 字符）
-        let snippet = extract_snippet(&body, &query_lower);
-
-        let updated_at = fs::metadata(path)
-            .ok()
-            .and_then(|m| m.modified().ok())
-            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-            .and_then(|d| chrono::DateTime::from_timestamp(d.as_secs() as i64, 0))
-            .map(|dt| dt.format("%Y-%m-%dT%H:%M:%SZ").to_string())
-            .unwrap_or_default();
+        let updated_at = format_modified_time(path);
+        let created_at = fm.created_at.clone().unwrap_or_else(|| updated_at.clone());
 
         results.push(SearchResult {
             path: path.to_string_lossy().to_string(),
             title,
             snippet,
             tags: fm.tags,
+            created_at,
             updated_at,
         });
     }
 
-    // 按标题命中优先排序
-    results.sort_by(|a, b| {
-        let a_title = a.title.to_lowercase().contains(&query_lower);
-        let b_title = b.title.to_lowercase().contains(&query_lower);
-        b_title.cmp(&a_title)
-    });
+    sort_by_title_match(&mut results, &query_lower);
+    results.truncate(max_results);
 
     Ok(results)
 }
 
+/// 尝试匹配标题或正文，返回匹配的摘要片段；无匹配时返回 None
+/// 供 search_engine 和 search_index 共用，避免搜索匹配逻辑重复
+pub fn match_note(title: &str, body: &str, query_lower: &str) -> Option<String> {
+    let title_lower = title.to_lowercase();
+    let title_match = title_lower.contains(query_lower);
+
+    if title_match {
+        Some(body.chars().take(120).collect())
+    } else {
+        let body_lower = body.to_lowercase();
+        if !body_lower.contains(query_lower) {
+            return None;
+        }
+        Some(extract_snippet(body, &body_lower, query_lower))
+    }
+}
+
+/// 按标题命中优先排序搜索结果
+/// 使用 sort_by_cached_key 缓存 to_lowercase() 结果，避免比较器中反复分配
+pub fn sort_by_title_match(results: &mut [SearchResult], query_lower: &str) {
+    results.sort_by_cached_key(|r| std::cmp::Reverse(r.title.to_lowercase().contains(query_lower)));
+}
+
 /// 从正文中提取命中关键词的上下文片段
-pub fn extract_snippet(body: &str, query_lower: &str) -> String {
-    let body_lower = body.to_lowercase();
+/// body_lower 由调用方预先计算，避免重复 to_lowercase() 分配
+fn extract_snippet(body: &str, body_lower: &str, query_lower: &str) -> String {
     if let Some(pos) = body_lower.find(query_lower) {
         let start = pos.saturating_sub(60);
         let end = (pos + query_lower.len() + 60).min(body.len());
         // 对齐 UTF-8 字符边界（向前找有效起点，向后找有效终点）
         let start = (0..=start).rev().find(|&i| body.is_char_boundary(i)).unwrap_or(0);
         let end = (end..=body.len()).find(|&i| body.is_char_boundary(i)).unwrap_or(body.len());
-        let mut s = body[start..end].trim().to_string();
-        if start > 0 {
-            s = format!("...{}", s);
-        }
-        if end < body.len() {
-            s = format!("{}...", s);
-        }
-        s
+        let trimmed = body[start..end].trim();
+        let prefix = if start > 0 { "..." } else { "" };
+        let suffix = if end < body.len() { "..." } else { "" };
+        format!("{}{}{}", prefix, trimmed, suffix)
     } else {
         // 标题命中但正文不含关键词，返回正文开头
         body.chars().take(120).collect()

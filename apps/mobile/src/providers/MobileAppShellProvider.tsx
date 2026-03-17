@@ -5,11 +5,10 @@ import { useShallow } from 'zustand/react/shallow'
 import type {
   AppNoteDetail,
   AppNoteItem,
-  AppSearchResult,
   AppShellContextValue,
   AppTagInfo,
 } from '@nicenote/app-shell'
-import { AppShellContext } from '@nicenote/app-shell'
+import { AppShellContext, mapToAppSearchResults } from '@nicenote/app-shell'
 import { generateSummary } from '@nicenote/shared'
 
 import { getRepository } from '../adapters/repository-provider'
@@ -134,18 +133,10 @@ export function MobileAppShellProvider({ children }: { children: React.ReactNode
   )
 
   // 搜索
-  const searchNotes = useCallback(async (query: string): Promise<AppSearchResult[]> => {
+  const searchNotes = useCallback(async (query: string) => {
     try {
       const results = await getRepository().search({ q: query, limit: 20 })
-      return results.map((r) => ({
-        id: r.id,
-        title: r.title,
-        summary: r.summary,
-        tags: r.tags ?? [],
-        updatedAt: r.updatedAt,
-        createdAt: r.createdAt,
-        snippet: r.snippet,
-      }))
+      return mapToAppSearchResults(results)
     } catch {
       return []
     }
@@ -181,8 +172,8 @@ export function MobileAppShellProvider({ children }: { children: React.ReactNode
         addTag: () => {},
         removeTag: () => {},
       },
-      theme: theme as 'light' | 'dark' | 'system',
-      setTheme: (t: 'light' | 'dark' | 'system') => setTheme(t),
+      theme,
+      setTheme,
       language,
       setLanguage,
       toasts: toastStore.toasts,

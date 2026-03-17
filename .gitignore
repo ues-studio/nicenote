@@ -5,6 +5,7 @@ node_modules/
 # Build / Output / Cache
 dist/
 out/
+**/coverage/
 .turbo/
 .swc/
 .vite/

@@ -18,7 +18,9 @@ export function useTauriEvents() {
     ])
 
     return () => {
-      unlisteners.then((fns) => fns.forEach((fn) => fn()))
+      unlisteners
+        .then((fns) => fns.forEach((fn) => fn()))
+        .catch((err) => console.error('清理 Tauri 事件监听器失败:', err))
     }
   }, [handleFileCreated, handleFileModified, handleFileDeleted])
 }

@@ -156,10 +156,10 @@ struct AppState {
 
 独立 store（来自 `@nicenote/app-shell` 工厂）：
 
-| Store            | 职责                       |
-| ---------------- | -------------------------- |
-| `useSidebarStore` | 侧边栏折叠 / 展开状态    |
-| `useToastStore`   | Toast 通知消息管理        |
+| Store             | 职责                  |
+| ----------------- | --------------------- |
+| `useSidebarStore` | 侧边栏折叠 / 展开状态 |
+| `useToastStore`   | Toast 通知消息管理    |
 
 主 store：`frontend/src/store/useDesktopStore.ts`，组合 5 个 slice：
 
@@ -170,8 +170,6 @@ struct AppState {
 | `searchSlice`   | 全文搜索状态                                     |
 | `settingsSlice` | 主题 / 语言 / 视图切换 / 收藏 / 标签颜色         |
 | `watcherSlice`  | 文件系统事件处理（created / modified / deleted） |
-
-计算选择器：`selectFilteredNotes()`、`selectAllTags()`
 
 #### Desktop 启动流程
 
@@ -204,12 +202,12 @@ struct AppState {
 
 Zustand 独立 store 模式：
 
-| Store              | 职责                              |
-| ------------------ | --------------------------------- |
-| `useNoteStore`     | 笔记 CRUD + 标签管理              |
-| `useSettingsStore` | 主题 + 语言（合并 store）          |
-| `useSidebarStore`  | 侧边栏折叠 / 展开（app-shell 工厂）|
-| `useToastStore`    | Toast 通知消息（app-shell 工厂）   |
+| Store              | 职责                                |
+| ------------------ | ----------------------------------- |
+| `useNoteStore`     | 笔记 CRUD + 标签管理                |
+| `useSettingsStore` | 主题 + 语言（合并 store）           |
+| `useSidebarStore`  | 侧边栏折叠 / 展开（app-shell 工厂） |
+| `useToastStore`    | Toast 通知消息（app-shell 工厂）    |
 
 数据层已移除（原 Cloudflare Workers API），待接入新数据源。
 

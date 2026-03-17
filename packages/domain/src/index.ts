@@ -9,7 +9,7 @@
 // ============================================================
 export type { NoteRepository } from './note-repository'
 export type { SearchIndex } from './search-index'
-export type { Settings, SettingsRepository } from './settings-repository'
+export type { Language, Settings, SettingsRepository, Theme } from './settings-repository'
 
 // 契约测试
 export { testNoteRepositoryContract } from './test-contracts/note-repository.contract'

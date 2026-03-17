@@ -12,6 +12,7 @@ export { toKebabCase } from './parsers'
 export { debounce } from './utils/debounce'
 export { formatShortcutKey, isMac, MAC_SYMBOLS, parseShortcutKeys } from './utils/platform'
 export { sanitizeContent } from './utils/sanitize'
+export { extractSnippet } from './utils/snippet'
 export { generateSummary } from './utils/summary'
 export { throttle } from './utils/throttle'
 export type { LinkValidationErrorKey } from './validators'
@@ -34,6 +35,7 @@ export type {
 export {
   noteCreateSchema,
   noteIdParamSchema,
+  noteInsertSchema,
   noteListItemSchema,
   noteListQuerySchema,
   noteSearchQuerySchema,

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 import type { NoteListItem, NoteSearchResult, NoteSelect, TagSelect } from '@nicenote/shared'
-import { generateSummary } from '@nicenote/shared'
+import { extractSnippet, generateSummary } from '@nicenote/shared'
 
 import { LocalStorageNoteRepository } from '../adapters/local-storage-note-repository'
 
@@ -85,13 +85,9 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
     set({ isLoading: true })
     try {
       const result = await repo.list({ limit: 100 })
-      // list 返回 NoteListItem（无 content），需要获取完整 NoteSelect
-      // 为了兼容现有代码，加载所有笔记的完整数据
-      const notes: NoteSelect[] = []
-      for (const item of result.data) {
-        const full = await repo.get(item.id)
-        if (full) notes.push(full)
-      }
+      // list 返回 NoteListItem（无 content），并行获取完整 NoteSelect
+      const fetched = await Promise.all(result.data.map((item) => repo.get(item.id)))
+      const notes = fetched.filter((n): n is NoteSelect => n !== null)
       set({ notes, isLoading: false })
     } catch {
       set({ isLoading: false })
@@ -130,18 +126,19 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
   },
 
   importNotes: (items) => {
-    // 批量导入仍使用同步方式（LocalStorageRepo 内部同步）
     const importPromises = items.map((item) =>
       repo.create({ title: item.title, content: item.content || null })
     )
-    Promise.all(importPromises).then((newNotes) => {
-      set((state) => ({ notes: [...newNotes, ...state.notes] }))
-    })
+    Promise.all(importPromises)
+      .then((newNotes) => {
+        set((state) => ({ notes: [...newNotes, ...state.notes] }))
+      })
+      .catch((err) => {
+        console.error('导入笔记失败:', err)
+      })
   },
 
   search: (query) => {
-    // 搜索是同步调用（LocalStorageNoteRepository 内部同步，Promise 立即 resolve）
-    // 为了保持接口同步，直接用内联搜索
     const q = query.toLowerCase()
     const limit = 20
     const notes = get().notes
@@ -152,17 +149,10 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
 
       const content = note.content ?? ''
       const titleMatch = note.title.toLowerCase().includes(q)
-      const contentIdx = content.toLowerCase().indexOf(q)
+      // extractSnippet 内部已做 toLowerCase + indexOf，无需重复计算
+      const snippet = extractSnippet(content, q)
 
-      if (!titleMatch && contentIdx === -1) continue
-
-      let snippet = ''
-      if (contentIdx !== -1) {
-        const start = Math.max(0, contentIdx - 40)
-        const end = Math.min(content.length, contentIdx + q.length + 60)
-        const raw = content.slice(start, end)
-        snippet = (start > 0 ? '…' : '') + raw + (end < content.length ? '…' : '')
-      }
+      if (!titleMatch && !snippet) continue
 
       results.push({
         id: note.id,
